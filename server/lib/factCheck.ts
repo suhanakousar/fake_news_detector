@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-interface FactCheck {
+export interface FactCheck {
   source: string;
   title: string;
   snippet: string;

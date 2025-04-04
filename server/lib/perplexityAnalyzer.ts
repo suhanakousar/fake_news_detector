@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { FactCheck } from './factCheck';
 
 interface PerplexityResponse {
   id: string;
@@ -32,7 +33,7 @@ interface PerplexityResponse {
  */
 export async function analyzeWithPerplexity(text: string): Promise<{ 
   enhancedReasoning: string[] | null,
-  enhancedFactChecks: Array<{ source: string, title: string, snippet: string, url: string }> | null
+  enhancedFactChecks: FactCheck[] | null
 }> {
   const apiKey = process.env.PERPLEXITY_API_KEY;
   

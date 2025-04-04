@@ -1,0 +1,107 @@
+Awesome! Adding an **Admin Dashboard** is a powerful way to make your Fake News Detector more scalable and professional. Here’s a **detailed breakdown** of what you can build into the Admin Dashboard, both in terms of **UI sections** and **backend functionalities**.
+
+---
+
+## 🧑‍💼 **Admin Dashboard Overview**
+
+This is a private panel only accessible to the admin. It gives you control over:
+
+1. 👥 User queries history  
+2. 🚩 Flagged articles  
+3. 🗣️ User feedback  
+4. 📈 Dataset control (add, edit, delete samples)
+
+---
+
+## 🔧 Pages/Sections Inside the Admin Dashboard
+
+---
+
+### 🔍 1. **View All User Queries**
+**Purpose:** Keep a log of everything users have submitted for analysis.
+
+#### UI Elements:
+- Search bar (by keyword, date, or result)
+- Filter: Fake / Real / Confidence score range
+- Table format:
+  | Date | User ID | Query Text | Prediction | Confidence | Actions |
+  |------|---------|-------------|-------------|------------|---------|
+
+#### Backend Functionalities:
+- Store every request in the database (timestamp, content, result)
+- Allow admin to delete or mark items
+- Optional: export logs as CSV
+
+---
+
+### 🚩 2. **Flagged Articles**
+**Purpose:** Articles flagged by users for manual review.
+
+#### UI Elements:
+- Table with:
+  | Date | User ID | Flagged Text | Reason (optional) | Status | Actions |
+- Actions: Approve as fake, Mark as real, Discard
+
+#### Backend Functionalities:
+- API to submit flags from frontend
+- Store flagged items in a separate `flagged_articles` collection/table
+- Admin actions to move items to dataset or discard
+
+---
+
+### 🗣️ 3. **User Feedback**
+**Purpose:** Collect thoughts, issues, or suggestions from users.
+
+#### UI Elements:
+- Feedback cards/list:
+  ```
+  ✉️ "The tool wrongly flagged this government article."
+  - User: anonymous123 | Date: 2025-04-05
+  [Reply] [Mark as read]
+  ```
+
+#### Backend Functionalities:
+- Feedback form on frontend saved to database
+- Admin can mark as addressed
+- Optional: add reply-to-email system
+
+---
+
+### 📊 4. **Dataset Management (Control Dataset Additions)**
+**Purpose:** Improve your ML model over time with curated examples.
+
+#### UI Elements:
+- Table with:
+  | Sample Text | Label (Fake/Real) | Source | Approved By | Actions |
+- Add New Sample Form:
+  - Text
+  - Label dropdown (Fake / Real)
+  - Source URL (optional)
+- Action buttons: Edit | Delete
+
+#### Backend Functionalities:
+- Add new samples manually or from flagged articles
+- Store to `custom_dataset` table or file
+- Ability to export to CSV/JSON
+- Option to retrain model later
+
+---
+
+## 🔒 Access Control
+- Route protection: only allow logged-in admin (basic JWT auth or session-based login)
+- Optional: multiple admin roles (Viewer, Editor, Super Admin)
+
+---
+
+## 🧱 Optional Tech Stack Suggestion
+
+If you want a stack for this:
+- **Frontend**: React (with Tailwind or Bootstrap Admin UI)
+- **Backend**: Flask or Node.js
+- **Database**: MongoDB / PostgreSQL
+- **Authentication**: Firebase Auth / JWT
+- **Charting**: Chart.js or Recharts for data visualization
+
+---
+
+Let me know your stack and I’ll generate the file structure or even code out the dashboard components for you. Want me to build a React + Flask dashboard template for this?

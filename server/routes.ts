@@ -400,6 +400,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "An error occurred while saving feedback" });
     }
   });
+  
+  // Temporary endpoint to promote a user to admin (remove in production)
+  app.post("/api/admin/promote/:username", async (req, res) => {
+    try {
+      const { username } = req.params;
+      
+      // Find the user
+      const user = await storage.getUserByUsername(username);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Update the user role to admin
+      const updatedUser = await storage.updateUser(user.id, { role: "admin" });
+      if (!updatedUser) {
+        return res.status(500).json({ message: "Failed to update user" });
+      }
+      
+      res.json({ message: `User ${username} promoted to admin successfully` });
+    } catch (error) {
+      console.error("Error promoting user to admin:", error);
+      res.status(500).json({ message: "An error occurred while promoting user" });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

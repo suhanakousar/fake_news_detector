@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
+import { User, Analysis, Feedback } from '@shared/schema';
 import {
   Tabs,
   TabsList,
@@ -102,7 +103,7 @@ export default function AdminDashboard() {
 }
 
 function UsersList() {
-  const { data: users, isLoading, error } = useQuery({
+  const { data: users = [], isLoading, error } = useQuery<User[]>({
     queryKey: ['/api/admin/users'],
     refetchInterval: 30000, // Refetch every 30 seconds
   });
@@ -154,12 +155,12 @@ function UsersList() {
 }
 
 function AnalysesList() {
-  const { data: analyses, isLoading, error } = useQuery({
+  const { data: analyses = [], isLoading, error } = useQuery<Analysis[]>({
     queryKey: ['/api/admin/analyses'],
     refetchInterval: 30000, // Refetch every 30 seconds
   });
 
-  const { data: users } = useQuery({
+  const { data: users = [] } = useQuery<User[]>({
     queryKey: ['/api/admin/users'],
   });
 
@@ -279,12 +280,12 @@ function AnalysesList() {
 }
 
 function FlaggedContentList() {
-  const { data: flaggedAnalyses, isLoading, error } = useQuery({
+  const { data: flaggedAnalyses = [], isLoading, error } = useQuery<Analysis[]>({
     queryKey: ['/api/admin/analyses/flagged'],
     refetchInterval: 30000, // Refetch every 30 seconds
   });
 
-  const { data: users } = useQuery({
+  const { data: users = [] } = useQuery<User[]>({
     queryKey: ['/api/admin/users'],
   });
 
@@ -400,12 +401,12 @@ function FlaggedContentList() {
 }
 
 function FeedbackList() {
-  const { data: feedback, isLoading, error } = useQuery({
+  const { data: feedback = [], isLoading, error } = useQuery<Feedback[]>({
     queryKey: ['/api/admin/feedback'],
     refetchInterval: 30000, // Refetch every 30 seconds
   });
 
-  const { data: users } = useQuery({
+  const { data: users = [] } = useQuery<User[]>({
     queryKey: ['/api/admin/users'],
   });
 
