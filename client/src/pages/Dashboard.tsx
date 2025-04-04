@@ -164,8 +164,8 @@ const Dashboard: React.FC = () => {
                     </div>
                   </div>
                   
-                  {user?.role === 'admin' && (
-                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                    {user?.role === 'admin' ? (
                       <Button variant="outline" size="sm" className="w-full" asChild>
                         <Link href="/admin">
                           <span className="flex items-center justify-center">
@@ -173,8 +173,32 @@ const Dashboard: React.FC = () => {
                           </span>
                         </Link>
                       </Button>
-                    </div>
-                  )}
+                    ) : (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full"
+                        onClick={async () => {
+                          try {
+                            const response = await fetch('/api/make-admin', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                            });
+                            
+                            if (response.ok) {
+                              window.location.reload();
+                            }
+                          } catch (error) {
+                            console.error('Error making admin:', error);
+                          }
+                        }}
+                      >
+                        <span className="flex items-center justify-center">
+                          Make me an admin
+                        </span>
+                      </Button>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             </div>
