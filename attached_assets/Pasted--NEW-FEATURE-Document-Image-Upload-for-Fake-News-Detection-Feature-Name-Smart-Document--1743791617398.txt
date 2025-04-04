@@ -1,0 +1,94 @@
+🖼️📄 NEW FEATURE: Document & Image Upload for Fake News Detection
+✨ Feature Name:
+Smart Document & Image Analyzer
+
+📋 Purpose:
+Allows users to upload screenshots, PDFs, or scanned articles, and the AI will automatically extract the text using OCR (Optical Character Recognition) and run fake news detection on it — ideal for social media screenshots, WhatsApp forwards, newspaper clippings, etc.
+
+⚙️ How It Works:
+🔹 Step 1: Upload Interface
+File Types Supported: .jpg, .png, .pdf, .docx
+
+UI: Drag-and-drop box with file preview and a “Scan Now” button
+
+Uses a React component with react-dropzone or standard file input
+
+🔹 Step 2: Text Extraction (OCR Engine)
+Use Tesseract.js (frontend OCR in JS) or Tesseract OCR via Python on the backend
+
+For PDF/DOCX:
+
+Use PyMuPDF or pdfplumber for PDFs
+
+Use python-docx for DOCX
+
+🔹 Step 3: Preprocess Text
+Clean extracted text: remove stopwords, lowercasing, lemmatize
+
+Truncate to relevant parts for performance
+
+🔹 Step 4: Fake News Detection
+Feed extracted text into the same BERT/RoBERTa classifier pipeline
+
+Output: Classification result + reasoning + summary + sentiment + bias
+
+🔹 Step 5: Display Results
+Show extracted text in a side panel
+
+Label the document/image as: ✅ Real, ❌ Fake, or ⚠️ Misleading
+
+Allow user to download results as PDF
+
+🧩 Frontend UI Ideas
+jsx
+Copy
+Edit
+<Card className="p-4 shadow-xl">
+  <h2 className="text-xl font-semibold mb-2">Upload Document or Image</h2>
+  <input type="file" accept=".pdf,.png,.jpg,.jpeg,.docx" onChange={handleUpload} />
+  <Button className="mt-2" onClick={handleScan}>Scan for Fake News</Button>
+  <div className="mt-4">{extractedText && <TextArea value={extractedText} readOnly />}</div>
+</Card>
+🧠 Backend Enhancements
+For OCR:
+python
+Copy
+Edit
+from PIL import Image
+import pytesseract
+
+def extract_text_from_image(file):
+    img = Image.open(file)
+    text = pytesseract.image_to_string(img)
+    return text
+For PDFs:
+python
+Copy
+Edit
+import fitz  # PyMuPDF
+
+def extract_text_from_pdf(file_path):
+    doc = fitz.open(file_path)
+    text = ""
+    for page in doc:
+        text += page.get_text()
+    return text
+🔐 Security Tips
+Sanitize file inputs
+
+Limit file size (e.g., max 5MB)
+
+Use cloud functions for processing if using heavy OCR
+
+🔥 Benefits
+Helps users who aren’t comfortable copy-pasting text
+
+Works on forwarded images, newspapers, magazine scans
+
+Increases accessibility and real-world applicability
+
+🎁 Bonus Add-on (Optional):
+📎 Whatsapp/Telegram Forward Scanner
+Simulate drag-drop of screenshots from chats
+
+Detect fake quotes, deepfakes, and doctored headlines

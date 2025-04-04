@@ -1,0 +1,148 @@
+ Project Title
+TruthLens: The AI-Powered Fake News Buster
+
+🧠 Elevator Pitch
+In an era where misinformation spreads faster than facts, TruthLens is a cutting-edge web application that empowers users to instantly verify news authenticity using advanced AI models. Beyond just identifying fake news, TruthLens explains why, provides cross-referenced facts, and offers real-time credibility scoring, all inside a clean, user-friendly interface.
+
+🛠️ Key Features (Enhanced)
+🔍 1. AI News Analyzer
+Input: Headline, full article, or URL
+
+Output: Label (Fake, Real, Misleading), Confidence Score, Reasoning
+
+🧩 2. Explainable AI (XAI)
+Shows which phrases or sections influenced the AI's decision
+
+Heatmap of "suspected" misinformation words
+
+🌐 3. Cross-Check with Trusted Sources
+Google Fact Check API
+
+Snopes, Politifact, BBC Reality Check
+
+Shows matching verified articles
+
+🎯 4. Source Credibility Scorer
+Ranks the news source based on historical accuracy
+
+Shows rating (Low, Medium, High trustworthiness)
+
+📊 5. Sentiment & Bias Analyzer
+Uses NLP to determine political/religious/other biases
+
+Shows whether the article uses fear, sensationalism, or exaggeration
+
+🧪 6. AI-Powered Summary Generator
+Summarizes long articles into short, neutral summaries
+
+Powered by PEGASUS or T5 model
+
+🧵 7. Thread Deconstructor (for Social Media URLs)
+Breaks down Twitter/X or Instagram threads to analyze credibility
+
+Detects manipulated media or misleading text
+
+📌 8. Multi-language Support
+Supports Hindi, Telugu, Tamil, Kannada, Malayalam, Urdu, Marathi, Bengali, etc.
+
+Auto detects and translates content for analysis
+
+🧠 9. User Education Zone (Fake News Awareness)
+Animated infographics on types of misinformation
+
+Tips on how to spot fake news manually
+
+Daily “Fake News Buster” quiz
+
+🗃️ 10. User History & Report System
+Tracks user analysis history
+
+Allows reporting and flagging misinformation
+
+🔧 11. Admin AI Trainer Dashboard
+Upload new datasets for continual learning
+
+Track model performance metrics
+
+Approve or reject flagged news
+
+💡 Optional Advanced Add-ons (For Bonus Marks)
+🗺️ Geolocation Heatmap of Fake News Spread
+
+Where fake news originates from (region/country-wise)
+
+🔗 Chrome Extension
+
+Click-to-verify tool for news on any webpage
+
+📱 Mobile PWA Support
+
+Installable web app for Android/iOS using React + Vite + Tailwind
+
+🔒 Blockchain Verification Log
+
+Immutable log of detected fake news (future-proof feature)
+
+💻 Tech Stack
+Layer	Tools / Libraries
+Frontend	React.js + Vite + Tailwind CSS + Axios
+Backend	Flask + FastAPI + Gunicorn/uvicorn
+AI Models	BERT / RoBERTa / DistilBERT + VADER/TextBlob
+Summarizer	PEGASUS / T5
+DB	MongoDB or Firebase
+Auth	Firebase Auth or Auth0
+APIs	Google Fact Check, Snopes API, NewsAPI
+Hosting	Vercel (frontend), Render/AWS/Heroku (backend)
+🧠 Model Training Details
+Dataset Sources:
+LIAR Dataset (MIT)
+
+ISOT Fake News Dataset
+
+Fake News Corpus
+
+Training Steps:
+Preprocess – Lowercasing, stemming, removing stopwords
+
+Tokenize using HuggingFace Tokenizer
+
+Fine-tune BERT/DistilBERT with classification layers
+
+Train summarizer model (T5 small or PEGASUS)
+
+Build ensemble output with:
+
+ML classifier
+
+Sentiment scorer
+
+Source rating
+
+Export model with ONNX or TorchScript for backend integration
+
+🧱 Web App Structure
+bash
+Copy
+Edit
+/TruthLens
+ ┣ /client (React Frontend)
+ ┃ ┣ /components
+ ┃ ┣ /pages (Home, Result, History, About, Admin)
+ ┃ ┣ App.jsx
+ ┃ ┗ tailwind.config.js
+ ┣ /server (Python Backend)
+ ┃ ┣ /ml_models (Fake news, summarizer, bias detector)
+ ┃ ┣ /routes (analyze.py, auth.py)
+ ┃ ┣ /utils (factcheck_api.py, summarizer.py)
+ ┃ ┗ main.py
+ ┗ /public (Static Assets)
+🧪 Testing and Metrics
+Accuracy > 90% on LIAR dataset
+
+F1 Score ≥ 0.92
+
+Response time < 2 seconds
+
+Mobile Lighthouse Score ≥ 90
+
+Stress test with >500 concurrent users
