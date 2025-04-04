@@ -1,36 +1,33 @@
-// Simple script to generate icons - in a real project you would use actual icons
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-const fs = require('fs');
-const path = require('path');
+// Get directory name in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-// If you implement this browser extension, you will need to create proper icon files:
-// icon16.png - 16x16 pixels
-// icon48.png - 48x48 pixels
-// icon128.png - 128x128 pixels
+// SVG icon template with magnifying glass and checkmark symbolizing verification
+const svgTemplate = (size) => `
+<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
+  <rect width="${size}" height="${size}" rx="${size/8}" fill="#1a5fb4" />
+  
+  <!-- Magnifying glass -->
+  <circle cx="${size*0.4}" cy="${size*0.4}" r="${size*0.25}" fill="none" stroke="white" stroke-width="${size/16}" />
+  <line x1="${size*0.58}" y1="${size*0.58}" x2="${size*0.75}" y2="${size*0.75}" stroke="white" stroke-width="${size/16}" stroke-linecap="round" />
+  
+  <!-- Checkmark -->
+  <path d="M${size*0.65} ${size*0.65} L${size*0.75} ${size*0.8} L${size*0.9} ${size*0.6}" fill="none" stroke="#50fa7b" stroke-width="${size/20}" stroke-linecap="round" stroke-linejoin="round" />
+</svg>`;
 
-// This file serves as a placeholder to remind you to create proper icon files
-// before distributing the extension.
+// Write SVG files for icon sizes
+const iconSizes = [16, 48, 128];
 
-console.log('👋 Remember to create proper icon files for your extension:');
-console.log('- icon16.png (16x16 pixels)');
-console.log('- icon48.png (48x48 pixels)');
-console.log('- icon128.png (128x128 pixels)');
-console.log('\nYou can use resources like https://www.canva.com/ or Figma to create icons.');
+iconSizes.forEach(size => {
+  const svgContent = svgTemplate(size);
+  const filename = path.join(__dirname, `icon${size}.svg`);
+  fs.writeFileSync(filename, svgContent);
+  console.log(`Created ${filename}`);
+});
 
-// In the meantime, here's a simple JSON that describes what the icons should look like
-const iconDescription = {
-  name: 'TruthLens Icon',
-  background: '#3D5AF1', // Blue
-  foreground: '#FFFFFF', // White
-  shape: 'Magnifying glass with a checkmark',
-  style: 'Modern, simple, flat design'
-};
-
-// Write the description to a file
-fs.writeFileSync(
-  path.join(__dirname, 'icon_description.json'),
-  JSON.stringify(iconDescription, null, 2)
-);
-
-console.log('\nCreated icon_description.json as a placeholder.');
-console.log('When ready, copy your actual icon files to this directory.');
+console.log('SVG icons created successfully. Convert these to PNG files for Chrome compatibility.');
+console.log('You can use online converters or an image editing program to convert the SVG files to PNG.');

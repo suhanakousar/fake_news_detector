@@ -3,154 +3,370 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TruthLens</title>
-  <link rel="stylesheet" href="popup.css">
+  <title>TruthLens Browser Extension</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      width: 320px;
+      margin: 0;
+      padding: 0;
+      color: #333;
+    }
+    
+    .header {
+      background-color: #1a5fb4;
+      color: white;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .header h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+    }
+    
+    .logo {
+      display: flex;
+      align-items: center;
+    }
+    
+    .logo img {
+      width: 24px;
+      height: 24px;
+      margin-right: 8px;
+    }
+    
+    .settings-icon {
+      cursor: pointer;
+      opacity: 0.8;
+    }
+    
+    .settings-icon:hover {
+      opacity: 1;
+    }
+    
+    .content {
+      padding: 16px;
+    }
+    
+    .section {
+      margin-bottom: 16px;
+    }
+    
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #555;
+    }
+    
+    .control {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 40px;
+      height: 24px;
+    }
+    
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .3s;
+      border-radius: 34px;
+    }
+    
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .3s;
+      border-radius: 50%;
+    }
+    
+    input:checked + .slider {
+      background-color: #1a5fb4;
+    }
+    
+    input:checked + .slider:before {
+      transform: translateX(16px);
+    }
+    
+    .button {
+      background-color: #1a5fb4;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 8px 16px;
+      font-size: 14px;
+      cursor: pointer;
+      width: 100%;
+      transition: background-color 0.2s;
+    }
+    
+    .button:hover {
+      background-color: #0c4da2;
+    }
+    
+    .settings-panel {
+      padding: 16px;
+      display: none;
+    }
+    
+    .settings-panel.active {
+      display: block;
+    }
+    
+    input[type="text"] {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    
+    .status {
+      padding: 16px;
+      text-align: center;
+      display: none;
+    }
+    
+    .status.active {
+      display: block;
+    }
+    
+    .status-icon {
+      font-size: 40px;
+      margin-bottom: 8px;
+    }
+    
+    .status-message {
+      margin-bottom: 16px;
+    }
+    
+    .result {
+      padding: 16px;
+      display: none;
+    }
+    
+    .result.active {
+      display: block;
+    }
+    
+    .classification {
+      font-size: 18px;
+      font-weight: bold;
+      text-align: center;
+      margin-bottom: 8px;
+      padding: 8px;
+      border-radius: 4px;
+    }
+    
+    .classification.fake {
+      background-color: #f8d7da;
+      color: #721c24;
+    }
+    
+    .classification.misleading {
+      background-color: #fff3cd;
+      color: #856404;
+    }
+    
+    .classification.real {
+      background-color: #d4edda;
+      color: #155724;
+    }
+    
+    .confidence {
+      text-align: center;
+      margin-bottom: 16px;
+      font-size: 14px;
+      color: #666;
+    }
+    
+    .reasoning {
+      margin-bottom: 16px;
+    }
+    
+    .reasoning-item {
+      margin-bottom: 8px;
+      padding-left: 16px;
+      position: relative;
+      font-size: 14px;
+    }
+    
+    .reasoning-item:before {
+      content: "•";
+      position: absolute;
+      left: 0;
+    }
+    
+    .source {
+      font-size: 14px;
+      padding: 8px;
+      background-color: #f8f9fa;
+      border-radius: 4px;
+      margin-bottom: 16px;
+    }
+    
+    .source-title {
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+    
+    .source-score {
+      display: flex;
+      align-items: center;
+    }
+    
+    .back-button {
+      background-color: transparent;
+      color: #666;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 8px 16px;
+      font-size: 14px;
+      cursor: pointer;
+      width: 100%;
+      transition: background-color 0.2s;
+    }
+    
+    .back-button:hover {
+      background-color: #f8f9fa;
+    }
+    
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid #ddd;
+    }
+    
+    .tab {
+      flex: 1;
+      text-align: center;
+      padding: 8px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+    }
+    
+    .tab.active {
+      border-bottom-color: #1a5fb4;
+      color: #1a5fb4;
+      font-weight: 500;
+    }
+  </style>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <div class="logo">
-        <img src="../icons/icon48.png" alt="TruthLens Logo" />
-        <h1>TruthLens</h1>
-      </div>
-      <div class="toggle-container">
+  <div class="header">
+    <div class="logo">
+      <img src="../icons/icon48.png" alt="TruthLens Logo">
+      <h1>TruthLens</h1>
+    </div>
+    <div class="settings-icon" id="settingsToggle">⚙️</div>
+  </div>
+  
+  <div class="tabs">
+    <div class="tab active" data-tab="main">Main</div>
+    <div class="tab" data-tab="settings">Settings</div>
+  </div>
+  
+  <div id="mainPanel" class="content">
+    <div class="section">
+      <div class="section-title">Auto-detection</div>
+      <div class="control">
+        <span>Enable automatic analysis</span>
         <label class="switch">
-          <input type="checkbox" id="enableExtension" checked>
-          <span class="slider round"></span>
+          <input type="checkbox" id="autoDetect" checked>
+          <span class="slider"></span>
         </label>
       </div>
-    </header>
-
-    <!-- Loading state -->
-    <div id="loadingState" class="content-section">
-      <div class="loading-spinner"></div>
-      <p>Analyzing this page...</p>
-    </div>
-
-    <!-- Error state -->
-    <div id="errorState" class="content-section hidden">
-      <div class="error-icon">⚠️</div>
-      <h3>Analysis Failed</h3>
-      <p id="errorMessage">Could not analyze this page.</p>
-      <button id="retryButton" class="button">Try Again</button>
-    </div>
-
-    <!-- Results state -->
-    <div id="resultsState" class="content-section hidden">
-      <div class="result-header">
-        <div id="resultIcon" class="result-icon"></div>
-        <div class="result-summary">
-          <h3 id="resultTitle">Content Analysis</h3>
-          <div class="confidence-bar">
-            <div id="confidenceIndicator" class="confidence-indicator"></div>
-            <span id="confidenceValue">0%</span>
-          </div>
-        </div>
+      <div class="control">
+        <span>Highlight suspicious content</span>
+        <label class="switch">
+          <input type="checkbox" id="highlightContent" checked>
+          <span class="slider"></span>
+        </label>
       </div>
-
-      <div class="result-details">
-        <h4>Key Findings:</h4>
-        <ul id="reasoningList" class="reasoning-list"></ul>
-      </div>
-
-      <div class="fact-checks">
-        <h4>Fact Checks:</h4>
-        <div id="factChecksList" class="fact-checks-list">
-          <p class="no-fact-checks">No specific fact checks found.</p>
-        </div>
-      </div>
-
-      <div class="actions">
-        <button id="highlightButton" class="button">
-          <span class="highlight-icon">🔍</span>
-          <span id="highlightButtonText">Highlight Misleading Content</span>
-        </button>
-        <button id="reportButton" class="button secondary">
-          <span class="report-icon">🚩</span>
-          Report Issue
-        </button>
+      <div class="control">
+        <span>Show warning banners</span>
+        <label class="switch">
+          <input type="checkbox" id="showBanners" checked>
+          <span class="slider"></span>
+        </label>
       </div>
     </div>
-
-    <!-- No content state -->
-    <div id="noContentState" class="content-section hidden">
-      <div class="empty-icon">🔎</div>
-      <h3>No Content to Analyze</h3>
-      <p>Visit a news article or content page to analyze it for misinformation.</p>
-    </div>
-
-    <!-- Footer -->
-    <footer>
-      <a href="https://truthlens.replit.app" target="_blank" class="footer-link">
-        Visit TruthLens Website
-      </a>
-      <button id="settingsButton" class="icon-button">⚙️</button>
-    </footer>
-  </div>
-
-  <!-- Settings Modal -->
-  <div id="settingsModal" class="modal hidden">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3>Settings</h3>
-        <button id="closeSettings" class="close-button">✕</button>
-      </div>
-      <div class="modal-body">
-        <div class="setting-item">
-          <div class="setting-info">
-            <h4>Auto-Check Pages</h4>
-            <p>Automatically analyze pages as you browse</p>
-          </div>
-          <div class="setting-control">
-            <label class="switch">
-              <input type="checkbox" id="autoCheckSetting" checked>
-              <span class="slider round"></span>
-            </label>
-          </div>
-        </div>
-
-        <div class="setting-item">
-          <div class="setting-info">
-            <h4>Highlight Content</h4>
-            <p>Highlight potentially misleading content</p>
-          </div>
-          <div class="setting-control">
-            <label class="switch">
-              <input type="checkbox" id="highlightSetting" checked>
-              <span class="slider round"></span>
-            </label>
-          </div>
-        </div>
-
-        <div class="setting-item">
-          <div class="setting-info">
-            <h4>Show Notifications</h4>
-            <p>Display alerts when fake news is detected</p>
-          </div>
-          <div class="setting-control">
-            <label class="switch">
-              <input type="checkbox" id="notificationsSetting" checked>
-              <span class="slider round"></span>
-            </label>
-          </div>
-        </div>
-
-        <div class="setting-item">
-          <div class="setting-info">
-            <h4>API Endpoint</h4>
-            <p>TruthLens API server URL</p>
-          </div>
-          <div class="setting-control full-width">
-            <input type="text" id="apiUrlSetting" class="text-input" value="https://truthlens-api.replit.app">
-          </div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button id="saveSettings" class="button">Save Settings</button>
-      </div>
+    
+    <div class="section">
+      <button id="analyzeButton" class="button">Analyze Current Page</button>
     </div>
   </div>
-
+  
+  <div id="settingsPanel" class="settings-panel">
+    <div class="section">
+      <div class="section-title">API Configuration</div>
+      <label for="apiEndpoint">TruthLens API Endpoint</label>
+      <input type="text" id="apiEndpoint" placeholder="https://your-truthlens-api.com/api">
+      
+      <button id="saveSettings" class="button">Save Settings</button>
+    </div>
+  </div>
+  
+  <div id="loadingStatus" class="status">
+    <div class="status-icon">⏳</div>
+    <div class="status-message">Analyzing content...</div>
+    <button id="cancelAnalysis" class="back-button">Cancel</button>
+  </div>
+  
+  <div id="errorStatus" class="status">
+    <div class="status-icon">❌</div>
+    <div class="status-message">Error analyzing content. Please try again.</div>
+    <button id="backFromError" class="back-button">Back</button>
+  </div>
+  
+  <div id="result" class="result">
+    <div id="classification" class="classification">Real</div>
+    <div id="confidence" class="confidence">Confidence: 85%</div>
+    
+    <div class="section">
+      <div class="section-title">Reasoning</div>
+      <div id="reasoning" class="reasoning">
+        <!-- Reasoning items will be added here -->
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">Source Credibility</div>
+      <div id="source" class="source">
+        <!-- Source information will be added here -->
+      </div>
+    </div>
+    
+    <button id="backToMain" class="back-button">Back</button>
+  </div>
+  
   <script src="popup.js"></script>
 </body>
 </html>

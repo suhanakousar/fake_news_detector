@@ -1,62 +1,174 @@
-/* TruthLens Extension - Content Styles */
+/* TruthLens Extension Styles */
 
-.truthlens-highlighted {
-  transition: background-color 0.3s ease;
+.truthlens-highlight {
+  background-color: rgba(255, 160, 122, 0.3) !important;
+  border: 1px dashed #ff7043 !important;
+  padding: 2px !important;
+  cursor: pointer !important;
+  position: relative !important;
 }
 
-#truthlens-banner {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  transition: all 0.3s ease;
-}
-
-#truthlens-banner .reason {
-  opacity: 0.9;
-  font-size: 13px;
+.truthlens-highlight:hover {
+  background-color: rgba(255, 160, 122, 0.5) !important;
 }
 
 .truthlens-tooltip {
+  display: none;
   position: absolute;
-  background-color: #ffffff;
-  border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  padding: 12px 16px;
-  font-size: 13px;
-  max-width: 300px;
-  z-index: 10000;
-  color: #333;
-  border: 1px solid #e0e0e0;
-}
-
-.truthlens-tooltip h4 {
-  margin: 0 0 8px 0;
+  z-index: 9999;
+  left: 0;
+  top: 100%;
+  background-color: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  padding: 12px;
+  width: 300px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-size: 14px;
-  font-weight: 600;
+  line-height: 1.5;
+  color: #333;
 }
 
-.truthlens-tooltip p {
-  margin: 0 0 8px 0;
+.truthlens-highlight:hover .truthlens-tooltip {
+  display: block;
+}
+
+.truthlens-tooltip-title {
+  margin: 0 0 8px;
+  font-weight: bold;
+  font-size: 16px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 4px;
+}
+
+.truthlens-tooltip-content {
+  margin-bottom: 8px;
+}
+
+.truthlens-tooltip-reason {
+  font-style: italic;
+  margin-bottom: 4px;
+}
+
+.truthlens-tooltip-confidence {
   font-size: 12px;
-  line-height: 1.4;
+  color: #666;
 }
 
-.truthlens-tooltip-fake {
-  border-left: 4px solid #e53935;
+.truthlens-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background-color: #f8d7da;
+  color: #721c24;
+  border-bottom: 1px solid #f5c6cb;
+  padding: 10px 15px;
+  z-index: 10000;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.truthlens-tooltip-misleading {
-  border-left: 4px solid #ff9800;
+.truthlens-banner.warning {
+  background-color: #fff3cd;
+  color: #856404;
+  border-color: #ffeeba;
 }
 
-.truthlens-tooltip-real {
-  border-left: 4px solid #43a047;
+.truthlens-banner.info {
+  background-color: #d1ecf1;
+  color: #0c5460;
+  border-color: #bee5eb;
 }
 
-/* Animation for banner */
-@keyframes slidein {
-  from { transform: translateY(-100%); }
-  to { transform: translateY(0); }
+.truthlens-banner-content {
+  flex: 1;
 }
 
-.truthlens-banner-animation {
-  animation: slidein 0.3s ease-out;
+.truthlens-banner-title {
+  font-weight: bold;
+  margin-right: 8px;
+}
+
+.truthlens-banner-close {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  color: inherit;
+  opacity: 0.7;
+}
+
+.truthlens-banner-close:hover {
+  opacity: 1;
+}
+
+.truthlens-notification {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background-color: white;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 16px;
+  width: 320px;
+  z-index: 10000;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  animation: truthlens-fade-in 0.3s;
+}
+
+@keyframes truthlens-fade-in {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.truthlens-notification-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.truthlens-notification-title {
+  font-weight: bold;
+  font-size: 16px;
+  margin: 0;
+}
+
+.truthlens-notification-close {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  color: #666;
+}
+
+.truthlens-notification-content {
+  margin-bottom: 12px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.truthlens-notification-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.truthlens-notification-button {
+  background-color: #1a5fb4;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.truthlens-notification-button:hover {
+  background-color: #0c4da2;
 }

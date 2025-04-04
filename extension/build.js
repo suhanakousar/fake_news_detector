@@ -1,73 +1,70 @@
-// Simple script to bundle the extension for distribution
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
 
-// Create a dist directory for the packaged extension
+// Directories to include in the extension package
+const directories = [
+  'icons',
+  'popup',
+  'scripts'
+];
+
+// Files to include in the root of the extension package
+const rootFiles = [
+  'manifest.json'
+];
+
+// Create a dist directory if it doesn't exist
 const distDir = path.join(__dirname, 'dist');
 if (!fs.existsSync(distDir)) {
   fs.mkdirSync(distDir);
+  console.log('Created dist directory');
 }
 
-// Copy all files except build scripts and dist directory
-function copyDirectory(src, dest) {
-  const files = fs.readdirSync(src);
+// Copy all the necessary directories
+directories.forEach(dir => {
+  const srcDir = path.join(__dirname, dir);
+  const destDir = path.join(distDir, dir);
   
-  for (const file of files) {
-    const srcPath = path.join(src, file);
-    const destPath = path.join(dest, file);
+  if (!fs.existsSync(destDir)) {
+    fs.mkdirSync(destDir);
+  }
+  
+  copyDirectory(srcDir, destDir);
+});
+
+// Copy root files
+rootFiles.forEach(file => {
+  const srcFile = path.join(__dirname, file);
+  const destFile = path.join(distDir, file);
+  
+  if (fs.existsSync(srcFile)) {
+    fs.copyFileSync(srcFile, destFile);
+    console.log(`Copied ${file} to dist`);
+  } else {
+    console.error(`Warning: ${file} does not exist, skipping`);
+  }
+});
+
+// Function to recursively copy a directory
+function copyDirectory(src, dest) {
+  const entries = fs.readdirSync(src, { withFileTypes: true });
+  
+  entries.forEach(entry => {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
     
-    // Skip the build script and dist directory
-    if (file === 'build.js' || file === 'dist') {
-      continue;
-    }
-    
-    const stat = fs.statSync(srcPath);
-    if (stat.isDirectory()) {
-      fs.mkdirSync(destPath, { recursive: true });
+    if (entry.isDirectory()) {
+      if (!fs.existsSync(destPath)) {
+        fs.mkdirSync(destPath);
+      }
       copyDirectory(srcPath, destPath);
     } else {
       fs.copyFileSync(srcPath, destPath);
+      console.log(`Copied ${srcPath} to ${destPath}`);
     }
-  }
+  });
 }
 
-// Main build process
-try {
-  console.log('🔨 Building TruthLens Browser Extension...');
-  
-  // Clean any existing build
-  if (fs.existsSync(distDir)) {
-    fs.rmSync(distDir, { recursive: true });
-  }
-  fs.mkdirSync(distDir);
-  
-  // Copy files
-  copyDirectory(__dirname, distDir);
-  
-  // Create a zip file for distribution
-  console.log('📦 Creating extension package...');
-  
-  // Use zip command if available, or provide instructions
-  try {
-    execSync(`cd ${distDir} && zip -r ../truthlens-extension.zip .`);
-    console.log('✅ Extension package created: truthlens-extension.zip');
-  } catch (error) {
-    console.log('⚠️ Could not create zip file automatically.');
-    console.log('Please manually zip the contents of the "dist" directory for distribution.');
-  }
-  
-  console.log('🎉 Build complete!');
-  console.log('');
-  console.log('To load the extension in Chrome:');
-  console.log('1. Open Chrome and navigate to chrome://extensions/');
-  console.log('2. Enable "Developer mode" (toggle in the top-right)');
-  console.log('3. Click "Load unpacked" and select the "dist" directory');
-  console.log('');
-  console.log('To load the extension in Firefox:');
-  console.log('1. Open Firefox and navigate to about:debugging#/runtime/this-firefox');
-  console.log('2. Click "Load Temporary Add-on" and select the "manifest.json" file in the dist directory');
-  
-} catch (error) {
-  console.error('❌ Build failed:', error);
-}
+console.log('Build completed successfully! The extension is ready in the dist directory.');
+console.log('To load the extension in Chrome, go to chrome://extensions, enable Developer mode,');
+console.log('click "Load unpacked", and select the dist directory.');
