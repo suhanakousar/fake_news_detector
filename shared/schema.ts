@@ -7,6 +7,7 @@ export const users = pgTable("users", {
   username: text("username").notNull().unique(),
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
+  role: text("role").notNull().default("user"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -16,6 +17,15 @@ export const analysis = pgTable("analysis", {
   content: text("content").notNull(),
   contentType: text("content_type").notNull(), // text, url, image, document, voice
   result: jsonb("result").notNull(),
+  isFlagged: boolean("is_flagged").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const feedback = pgTable("feedback", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  analysisId: integer("analysis_id").references(() => analysis.id),
+  content: text("content").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -23,6 +33,7 @@ export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   email: true,
   password: true,
+  role: true,
 });
 
 export const loginSchema = z.object({
@@ -35,12 +46,21 @@ export const insertAnalysisSchema = createInsertSchema(analysis).pick({
   content: true,
   contentType: true,
   result: true,
+  isFlagged: true,
+});
+
+export const insertFeedbackSchema = createInsertSchema(feedback).pick({
+  userId: true,
+  analysisId: true,
+  content: true,
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type Analysis = typeof analysis.$inferSelect;
+export type Feedback = typeof feedback.$inferSelect;
 export type InsertAnalysis = z.infer<typeof insertAnalysisSchema>;
+export type InsertFeedback = z.infer<typeof insertFeedbackSchema>;
 export type AnalysisResult = {
   classification: "real" | "fake" | "misleading";
   confidence: number;

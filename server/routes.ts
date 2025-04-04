@@ -47,6 +47,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     res.status(401).json({ message: "Unauthorized" });
   };
+  
+  // Middleware to check if user is an admin
+  const isAdmin = async (req: Request, res: Response, next: Function) => {
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    try {
+      const user = await storage.getUser(req.session.userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      if (user.role !== "admin") {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      next();
+    } catch (error) {
+      console.error("Error in admin middleware:", error);
+      res.status(500).json({ message: "Server error" });
+    }
+  };
 
   // Authentication routes
   app.post("/api/auth/register", async (req, res) => {
@@ -285,6 +308,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching analysis:", error);
       res.status(500).json({ message: "An error occurred while fetching analysis" });
+    }
+  });
+  
+  // Admin routes
+  app.get("/api/admin/users", isAdmin, async (req, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      // Remove passwords before sending
+      const usersWithoutPasswords = users.map(user => {
+        const { password, ...userWithoutPassword } = user;
+        return userWithoutPassword;
+      });
+      res.json(usersWithoutPasswords);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "An error occurred while fetching users" });
+    }
+  });
+  
+  app.get("/api/admin/analyses", isAdmin, async (req, res) => {
+    try {
+      const analyses = await storage.getAllAnalyses();
+      res.json(analyses);
+    } catch (error) {
+      console.error("Error fetching all analyses:", error);
+      res.status(500).json({ message: "An error occurred while fetching analyses" });
+    }
+  });
+  
+  app.get("/api/admin/analyses/flagged", isAdmin, async (req, res) => {
+    try {
+      const flaggedAnalyses = await storage.getFlaggedAnalyses();
+      res.json(flaggedAnalyses);
+    } catch (error) {
+      console.error("Error fetching flagged analyses:", error);
+      res.status(500).json({ message: "An error occurred while fetching flagged analyses" });
+    }
+  });
+  
+  app.patch("/api/admin/analysis/:id/flag", isAdmin, async (req, res) => {
+    try {
+      const analysisId = parseInt(req.params.id);
+      if (isNaN(analysisId)) {
+        return res.status(400).json({ message: "Invalid analysis ID" });
+      }
+      
+      const { isFlagged } = req.body;
+      if (typeof isFlagged !== 'boolean') {
+        return res.status(400).json({ message: "isFlagged parameter must be a boolean" });
+      }
+      
+      const analysis = await storage.flagAnalysis(analysisId, isFlagged);
+      if (!analysis) {
+        return res.status(404).json({ message: "Analysis not found" });
+      }
+      
+      res.json(analysis);
+    } catch (error) {
+      console.error("Error flagging analysis:", error);
+      res.status(500).json({ message: "An error occurred while flagging analysis" });
+    }
+  });
+  
+  app.get("/api/admin/feedback", isAdmin, async (req, res) => {
+    try {
+      const feedback = await storage.getAllFeedback();
+      res.json(feedback);
+    } catch (error) {
+      console.error("Error fetching feedback:", error);
+      res.status(500).json({ message: "An error occurred while fetching feedback" });
+    }
+  });
+  
+  app.post("/api/feedback", isAuthenticated, async (req, res) => {
+    try {
+      const { analysisId, content } = req.body;
+      if (!analysisId || !content) {
+        return res.status(400).json({ message: "Analysis ID and content are required" });
+      }
+      
+      const feedback = await storage.saveFeedback({
+        userId: req.session.userId!,
+        analysisId,
+        content
+      });
+      
+      res.status(201).json(feedback);
+    } catch (error) {
+      console.error("Error saving feedback:", error);
+      res.status(500).json({ message: "An error occurred while saving feedback" });
     }
   });
 

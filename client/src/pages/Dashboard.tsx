@@ -163,6 +163,18 @@ const Dashboard: React.FC = () => {
                       )}
                     </div>
                   </div>
+                  
+                  {user?.role === 'admin' && (
+                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <Button variant="outline" size="sm" className="w-full" asChild>
+                        <Link href="/admin">
+                          <span className="flex items-center justify-center">
+                            Admin Dashboard <ChevronRight className="ml-1 h-4 w-4" />
+                          </span>
+                        </Link>
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
