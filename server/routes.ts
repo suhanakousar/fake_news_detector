@@ -347,6 +347,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Browser Extension API Endpoints
+  app.post("/api/analyze/extension", async (req, res) => {
+    try {
+      const { text, url } = req.body;
+      
+      if ((!text || typeof text !== 'string' || text.trim() === '') && 
+          (!url || typeof url !== 'string' || url.trim() === '')) {
+        return res.status(400).json({ message: "Either text or URL is required" });
+      }
+
+      let result;
+      
+      // If URL is provided, analyze it
+      if (url && url.trim() !== '') {
+        result = await analyzeUrl(url);
+      } 
+      // Otherwise analyze the text
+      else {
+        result = await analyzeText(text);
+      }
+      
+      // No need to save analysis for extension requests unless user is authenticated
+      if (req.session.userId) {
+        await storage.saveAnalysis({
+          userId: req.session.userId,
+          content: url || text,
+          contentType: url ? "url" : "text",
+          result,
+        });
+      }
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error processing extension request:", error);
+      res.status(500).json({ message: "An error occurred during analysis" });
+    }
+  });
+  
   app.patch("/api/admin/analysis/:id/flag", isAdmin, async (req, res) => {
     try {
       const analysisId = parseInt(req.params.id);

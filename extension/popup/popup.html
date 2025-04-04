@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TruthLens</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">
+        <img src="../icons/icon48.png" alt="TruthLens Logo" />
+        <h1>TruthLens</h1>
+      </div>
+      <div class="toggle-container">
+        <label class="switch">
+          <input type="checkbox" id="enableExtension" checked>
+          <span class="slider round"></span>
+        </label>
+      </div>
+    </header>
+
+    <!-- Loading state -->
+    <div id="loadingState" class="content-section">
+      <div class="loading-spinner"></div>
+      <p>Analyzing this page...</p>
+    </div>
+
+    <!-- Error state -->
+    <div id="errorState" class="content-section hidden">
+      <div class="error-icon">⚠️</div>
+      <h3>Analysis Failed</h3>
+      <p id="errorMessage">Could not analyze this page.</p>
+      <button id="retryButton" class="button">Try Again</button>
+    </div>
+
+    <!-- Results state -->
+    <div id="resultsState" class="content-section hidden">
+      <div class="result-header">
+        <div id="resultIcon" class="result-icon"></div>
+        <div class="result-summary">
+          <h3 id="resultTitle">Content Analysis</h3>
+          <div class="confidence-bar">
+            <div id="confidenceIndicator" class="confidence-indicator"></div>
+            <span id="confidenceValue">0%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="result-details">
+        <h4>Key Findings:</h4>
+        <ul id="reasoningList" class="reasoning-list"></ul>
+      </div>
+
+      <div class="fact-checks">
+        <h4>Fact Checks:</h4>
+        <div id="factChecksList" class="fact-checks-list">
+          <p class="no-fact-checks">No specific fact checks found.</p>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="highlightButton" class="button">
+          <span class="highlight-icon">🔍</span>
+          <span id="highlightButtonText">Highlight Misleading Content</span>
+        </button>
+        <button id="reportButton" class="button secondary">
+          <span class="report-icon">🚩</span>
+          Report Issue
+        </button>
+      </div>
+    </div>
+
+    <!-- No content state -->
+    <div id="noContentState" class="content-section hidden">
+      <div class="empty-icon">🔎</div>
+      <h3>No Content to Analyze</h3>
+      <p>Visit a news article or content page to analyze it for misinformation.</p>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+      <a href="https://truthlens.replit.app" target="_blank" class="footer-link">
+        Visit TruthLens Website
+      </a>
+      <button id="settingsButton" class="icon-button">⚙️</button>
+    </footer>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="settingsModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Settings</h3>
+        <button id="closeSettings" class="close-button">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="setting-item">
+          <div class="setting-info">
+            <h4>Auto-Check Pages</h4>
+            <p>Automatically analyze pages as you browse</p>
+          </div>
+          <div class="setting-control">
+            <label class="switch">
+              <input type="checkbox" id="autoCheckSetting" checked>
+              <span class="slider round"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <h4>Highlight Content</h4>
+            <p>Highlight potentially misleading content</p>
+          </div>
+          <div class="setting-control">
+            <label class="switch">
+              <input type="checkbox" id="highlightSetting" checked>
+              <span class="slider round"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <h4>Show Notifications</h4>
+            <p>Display alerts when fake news is detected</p>
+          </div>
+          <div class="setting-control">
+            <label class="switch">
+              <input type="checkbox" id="notificationsSetting" checked>
+              <span class="slider round"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <h4>API Endpoint</h4>
+            <p>TruthLens API server URL</p>
+          </div>
+          <div class="setting-control full-width">
+            <input type="text" id="apiUrlSetting" class="text-input" value="https://truthlens-api.replit.app">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="saveSettings" class="button">Save Settings</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
