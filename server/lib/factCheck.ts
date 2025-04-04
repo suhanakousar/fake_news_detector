@@ -1,4 +1,4 @@
-// This is a simplified mock implementation for the fact-checking API
+import axios from 'axios';
 
 interface FactCheck {
   source: string;
@@ -7,77 +7,110 @@ interface FactCheck {
   url: string;
 }
 
-const mockFactCheckDatabase = [
+// Google Fact Check API configuration
+const GOOGLE_FACT_CHECK_API_KEY = 'AIzaSyD4YUTtLdt_09Iqf2522dMHze0XVr45Uuk';
+const GOOGLE_FACT_CHECK_API_URL = 'https://factchecktools.googleapis.com/v1alpha1/claims:search';
+
+// Fallback fact checks in case the API call fails or returns no results
+const fallbackFactChecks: FactCheck[] = [
   {
-    keywords: ["nasa", "alien", "mars", "hidden", "evidence"],
-    factChecks: [
-      {
-        source: "Snopes",
-        title: "NASA Has Not Found Evidence of Alien Life on Mars",
-        snippet: "Claims about NASA hiding evidence of alien life on Mars are false. NASA's Mars missions have found no evidence of past or present alien life.",
-        url: "https://www.snopes.com/fact-check/nasa-mars-life/"
-      },
-      {
-        source: "NASA Official",
-        title: "Mars Exploration: What We've Actually Found",
-        snippet: "NASA's Mars missions have discovered evidence of past water activity and organic molecules, but no evidence of past or present life has been found.",
-        url: "https://mars.nasa.gov/news/8687/nasa-finds-ancient-organic-material-methane-on-mars/"
-      }
-    ]
-  },
-  {
-    keywords: ["covid", "vaccine", "microchip", "5g", "bill gates"],
-    factChecks: [
-      {
-        source: "Reuters",
-        title: "COVID-19 vaccines do not contain microchips or tracking devices",
-        snippet: "COVID-19 vaccines do not contain microchips, tracking mechanisms, or 5G technology. This claim has been repeatedly debunked.",
-        url: "https://www.reuters.com/article/factcheck-coronavirus-vaccine-idUSL1N2M01PE"
-      },
-      {
-        source: "WHO",
-        title: "COVID-19 Vaccine Myths",
-        snippet: "The World Health Organization addresses common misconceptions about COVID-19 vaccines, including the false claim about microchips.",
-        url: "https://www.who.int/emergencies/diseases/novel-coronavirus-2019/advice-for-public/myth-busters"
-      }
-    ]
-  },
-  {
-    keywords: ["climate change", "hoax", "scientists", "conspiracy"],
-    factChecks: [
-      {
-        source: "Climate.gov",
-        title: "Climate Change Evidence",
-        snippet: "Multiple lines of scientific evidence show that Earth's climate is warming due to human activities, particularly the emission of heat-trapping greenhouse gases.",
-        url: "https://www.climate.gov/news-features/understanding-climate/climate-change-global-temperature"
-      },
-      {
-        source: "NASA",
-        title: "Scientific Consensus on Climate Change",
-        snippet: "97 percent or more of actively publishing climate scientists agree that human activities are causing global warming and climate change.",
-        url: "https://climate.nasa.gov/scientific-consensus/"
-      }
-    ]
+    source: "TruthLens",
+    title: "Fact Check Database",
+    snippet: "No specific fact checks found for this content. Always verify information from multiple reliable sources.",
+    url: "https://www.reuters.com/fact-check"
   }
 ];
 
-export async function fetchFactChecks(text: string): Promise<FactCheck[]> {
-  // Convert text to lowercase for case-insensitive matching
-  const lowerText = text.toLowerCase();
+/**
+ * Extracts relevant keywords from text for better fact-checking queries
+ */
+function extractKeywords(text: string): string[] {
+  // Extract the most significant words or phrases
+  const cleanText = text.toLowerCase()
+    .replace(/[^\w\s]/g, '') // Remove punctuation
+    .replace(/\s+/g, ' '); // Normalize whitespace
   
-  // Find matching fact checks
-  const matchingFactChecks: FactCheck[] = [];
+  // Simple keyword extraction based on word frequency
+  const words = cleanText.split(' ');
+  const wordFrequency: Record<string, number> = {};
   
-  for (const entry of mockFactCheckDatabase) {
-    // Check if the text contains any of the keywords
-    const containsKeywords = entry.keywords.some(keyword => lowerText.includes(keyword.toLowerCase()));
-    
-    if (containsKeywords) {
-      // Add all fact checks associated with these keywords
-      matchingFactChecks.push(...entry.factChecks);
+  // Count word frequency
+  words.forEach(word => {
+    if (word.length > 3) { // Skip short words
+      wordFrequency[word] = (wordFrequency[word] || 0) + 1;
     }
-  }
+  });
   
-  // Return unique fact checks (in case of overlapping keywords)
-  return [...new Map(matchingFactChecks.map(check => [check.title, check])).values()];
+  // Get top keywords
+  return Object.entries(wordFrequency)
+    .sort((a, b) => b[1] - a[1]) // Sort by frequency
+    .slice(0, 5) // Take top 5 keywords
+    .map(entry => entry[0]);
+}
+
+/**
+ * Fetch fact checks from Google Fact Check API
+ * Falls back to basic mock data if API fails or returns no results
+ */
+export async function fetchFactChecks(text: string): Promise<FactCheck[]> {
+  try {
+    // Extract keywords from the text for better search results
+    const keywords = extractKeywords(text);
+    const query = keywords.join(' ');
+    
+    // Make request to Google Fact Check API
+    const response = await axios.get(GOOGLE_FACT_CHECK_API_URL, {
+      params: {
+        key: GOOGLE_FACT_CHECK_API_KEY,
+        query: query,
+        languageCode: 'en-US'
+      }
+    });
+    
+    // Process API response
+    if (response.data && response.data.claims && response.data.claims.length > 0) {
+      // Map API response to our FactCheck interface
+      return response.data.claims.slice(0, 5).map((claim: any) => {
+        const claimReview = claim.claimReview && claim.claimReview[0] ? claim.claimReview[0] : {};
+        
+        return {
+          source: claimReview.publisher?.name || 'Fact Checker',
+          title: claim.text || 'Claim review',
+          snippet: claimReview.textualRating || 'No rating available',
+          url: claimReview.url || 'https://www.reuters.com/fact-check'
+        };
+      });
+    }
+    
+    // If no results from API, try a direct search with main text topic
+    // Extract a short summary (first few words) for a more focused search
+    const textSummary = text.split(' ').slice(0, 10).join(' ');
+    
+    const fallbackResponse = await axios.get(GOOGLE_FACT_CHECK_API_URL, {
+      params: {
+        key: GOOGLE_FACT_CHECK_API_KEY,
+        query: textSummary,
+        languageCode: 'en-US'
+      }
+    });
+    
+    if (fallbackResponse.data && fallbackResponse.data.claims && fallbackResponse.data.claims.length > 0) {
+      return fallbackResponse.data.claims.slice(0, 5).map((claim: any) => {
+        const claimReview = claim.claimReview && claim.claimReview[0] ? claim.claimReview[0] : {};
+        
+        return {
+          source: claimReview.publisher?.name || 'Fact Checker',
+          title: claim.text || 'Claim review',
+          snippet: claimReview.textualRating || 'No rating available',
+          url: claimReview.url || 'https://www.reuters.com/fact-check'
+        };
+      });
+    }
+    
+    console.log('No fact checks found from Google API, using fallback data');
+    return fallbackFactChecks;
+  } catch (error) {
+    console.error('Error fetching fact checks from Google API:', error);
+    return fallbackFactChecks;
+  }
 }

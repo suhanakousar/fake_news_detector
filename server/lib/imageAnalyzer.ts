@@ -2,23 +2,53 @@ import type { AnalysisResult } from "@shared/schema";
 import { analyzeText } from "./analyzer";
 import Tesseract from "tesseract.js";
 
+/**
+ * Clean and preprocess extracted text for better analysis
+ */
+function preprocessText(text: string): string {
+  return text
+    .replace(/\s+/g, ' ')  // Replace multiple whitespace with single space
+    .replace(/\n+/g, ' ')  // Replace newlines with spaces
+    .replace(/[^\w\s.,!?;:'"()-]/g, '')  // Remove special characters except common punctuation
+    .trim();
+}
+
+/**
+ * Extracts and analyzes text from images using OCR
+ */
 export async function analyzeImage(imageBuffer: Buffer): Promise<AnalysisResult> {
   try {
     // Convert image to base64 for Tesseract
     const base64Image = imageBuffer.toString('base64');
 
-    // Perform OCR using Tesseract.js
+    // Configure OCR options for better accuracy
+    const ocrOptions = {
+      logger: (m: any) => console.log(m),
+      workerOptions: {
+        langPath: './eng.traineddata', // Path to language data
+      },
+      // Improve OCR quality with these settings
+      engineOptions: {
+        tessedit_char_whitelist: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,!?;:\'"()-',
+      }
+    };
+
+    // Perform OCR using Tesseract.js with improved configuration
     const result = await Tesseract.recognize(
       `data:image/jpeg;base64,${base64Image}`,
       'eng',
-      { logger: m => console.log(m) }
+      ocrOptions
     );
 
-    // Extract text from the OCR result
-    const extractedText = result.data.text;
+    // Extract text from the OCR result and preprocess it
+    let extractedText = result.data.text;
+    extractedText = preprocessText(extractedText);
 
-    // If no text was extracted, return an error result
-    if (!extractedText || extractedText.trim() === '') {
+    // Get confidence score from OCR
+    const confidence = result.data.confidence / 100; // Convert to 0-1 scale
+
+    // If no text was extracted or confidence is too low, return an error result
+    if (!extractedText || extractedText.trim() === '' || confidence < 0.2) {
       return {
         classification: "misleading",
         confidence: 0.5,

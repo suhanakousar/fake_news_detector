@@ -1,11 +1,18 @@
 import type { AnalysisResult } from "@shared/schema";
 import { fetchFactChecks } from "./factCheck";
+import { analyzeWithPerplexity } from "./perplexityAnalyzer";
 
-// This is a simplified mock implementation for the backend analyzer
-// In a real-world implementation, this would connect to actual AI models
-
+/**
+ * Analyzes text content for potential misinformation
+ * Combines basic pattern detection with Perplexity AI analysis when available
+ */
 export async function analyzeText(text: string): Promise<AnalysisResult> {
-  // Simple detection based on keywords
+  // Run basic pattern detection and Perplexity analysis in parallel
+  const [perplexityResults] = await Promise.all([
+    analyzeWithPerplexity(text)
+  ]);
+  
+  // Run the basic keyword analysis
   const lowerText = text.toLowerCase();
 
   // Define patterns for fake news detection
@@ -44,23 +51,29 @@ export async function analyzeText(text: string): Promise<AnalysisResult> {
     classification = "real";
   }
 
-  // Generate reasoning based on patterns found
-  const reasoning: string[] = [];
+  // Generate reasoning based on patterns found and enhanced analysis from Perplexity
+  let reasoning: string[] = [];
   
-  if (sensationalistCount > 0) {
-    reasoning.push("Uses sensationalist language that is common in fake news articles");
-  }
-  
-  if (unreliableSourceCount > 0) {
-    reasoning.push("References unnamed or anonymous sources that cannot be verified");
-  }
-  
-  if (unverifiedClaimsCount > 0) {
-    reasoning.push("Makes unverified or exaggerated claims without proper evidence");
-  }
+  // If we have Perplexity AI reasoning, use it first
+  if (perplexityResults.enhancedReasoning && perplexityResults.enhancedReasoning.length > 0) {
+    reasoning = [...perplexityResults.enhancedReasoning];
+  } else {
+    // Fall back to basic pattern-based reasoning
+    if (sensationalistCount > 0) {
+      reasoning.push("Uses sensationalist language that is common in fake news articles");
+    }
+    
+    if (unreliableSourceCount > 0) {
+      reasoning.push("References unnamed or anonymous sources that cannot be verified");
+    }
+    
+    if (unverifiedClaimsCount > 0) {
+      reasoning.push("Makes unverified or exaggerated claims without proper evidence");
+    }
 
-  if (reasoning.length === 0) {
-    reasoning.push("No common misinformation patterns detected");
+    if (reasoning.length === 0) {
+      reasoning.push("No common misinformation patterns detected");
+    }
   }
 
   // Perform sentiment analysis
@@ -99,14 +112,23 @@ export async function analyzeText(text: string): Promise<AnalysisResult> {
     politicalLeaningScore = 0.7;
   }
 
-  // Fetch fact checks
-  const factChecks = await fetchFactChecks(text);
+  // Fetch fact checks and combine with Perplexity fact checks if available
+  let factChecks = await fetchFactChecks(text);
+  
+  // If we have enhanced fact checks from Perplexity AI, add them
+  if (perplexityResults.enhancedFactChecks && perplexityResults.enhancedFactChecks.length > 0) {
+    factChecks = [...perplexityResults.enhancedFactChecks, ...factChecks];
+  }
 
   // Create the source credibility information
-  let sourceCredibility = {
+  let sourceCredibility: {
+    name: string;
+    score: number;
+    level: "low" | "medium" | "high";
+  } = {
     name: "Unknown Source",
     score: 0.5,
-    level: "medium" as const
+    level: "medium"
   };
 
   // Adjust source credibility based on detected patterns
@@ -114,19 +136,19 @@ export async function analyzeText(text: string): Promise<AnalysisResult> {
     sourceCredibility = {
       name: "Suspicious Source",
       score: 0.2,
-      level: "low" as const
+      level: "low"
     };
   } else if (totalMatches > 2) {
     sourceCredibility = {
       name: "Questionable Source",
       score: 0.4,
-      level: "low" as const
+      level: "low"
     };
   } else if (totalMatches === 0) {
     sourceCredibility = {
       name: "Reliable Source",
       score: 0.8,
-      level: "high" as const
+      level: "high"
     };
   }
 
