@@ -10,7 +10,6 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  updateUser(user: User): Promise<User>;
   getAllUsers(): Promise<User[]>;
   
   // Analysis operations
@@ -77,11 +76,6 @@ export class MemStorage implements IStorage {
 
   async getAllUsers(): Promise<User[]> {
     return Array.from(this.users.values());
-  }
-  
-  async updateUser(user: User): Promise<User> {
-    this.users.set(user.id, user);
-    return user;
   }
 
   // Analysis operations

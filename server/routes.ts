@@ -400,36 +400,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "An error occurred while saving feedback" });
     }
   });
-  
-  // Temporary route for testing purposes - make a user an admin
-  app.post("/api/make-admin", async (req, res) => {
-    try {
-      if (!req.session.userId) {
-        return res.status(401).json({ message: "You must be logged in" });
-      }
-      
-      const user = await storage.getUser(req.session.userId);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-      
-      // Update user role to admin
-      user.role = "admin";
-      
-      // Save the updated user
-      await storage.updateUser(user);
-      
-      // Update session with the new user data
-      req.session.userId = user.id;
-      
-      // Remove password before returning
-      const { password, ...userWithoutPassword } = user;
-      res.json(userWithoutPassword);
-    } catch (error) {
-      console.error("Error making user admin:", error);
-      res.status(500).json({ message: "An error occurred" });
-    }
-  });
 
   const httpServer = createServer(app);
   return httpServer;
