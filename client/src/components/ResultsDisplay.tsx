@@ -18,6 +18,7 @@ import {
 } from '@/lib/analysis';
 import { useMutation } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
+import ChatbotFloating from '@/components/ChatbotFloating';
 
 interface ResultsDisplayProps {
   result: AnalysisResult;
@@ -152,6 +153,9 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result, contentPreview,
   return (
     <section className="mb-16">
       <div className="max-w-4xl mx-auto">
+        {/* Specialized chatbot for this analysis result */}
+        <ChatbotFloating analysisResult={result} contentPreview={contentPreview} isResultsPage={true} />
+        
         <Card className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-md rounded-xl overflow-hidden shadow-lg border border-gray-200/50 dark:border-gray-700/50">
           {/* Result Header */}
           <div className="p-6 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 bg-opacity-90 dark:bg-opacity-90">

@@ -476,11 +476,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Question is required" });
       }
       
-      if (!content || typeof content !== 'string' || content.trim() === '') {
+      // Handle general chatbot queries (without analysis context)
+      if (!analysisResult) {
+        // Generate a general response based on the question only
+        const response = "I'm TruthLens AI, your fact-checking assistant. " +
+          "To analyze content, try pasting a news article, URL, or uploading a document on the main page. " +
+          "I can then help you identify potential misinformation and answer specific questions about the content.";
+        
+        return res.json({ response });
+      }
+      
+      // Handle queries with analysis context
+      if (!content || typeof content !== 'string') {
         return res.status(400).json({ message: "Content context is required" });
       }
       
-      if (!analysisResult || !analysisResult.classification || !analysisResult.reasoning || !Array.isArray(analysisResult.reasoning)) {
+      if (!analysisResult.classification || !analysisResult.reasoning || !Array.isArray(analysisResult.reasoning)) {
         return res.status(400).json({ message: "Analysis result with classification and reasoning is required" });
       }
       

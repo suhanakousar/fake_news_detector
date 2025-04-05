@@ -1,0 +1,360 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { 
+  MessageSquare, X, Send, Mic, MinusSquare, 
+  ChevronUp, Loader2, AlertCircle
+} from 'lucide-react';
+import { AnalysisResult } from '@shared/schema';
+import { useMutation } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
+import { useTheme } from '@/contexts/ThemeContext';
+import { motion, AnimatePresence } from 'framer-motion';
+
+interface ChatMessage {
+  text: string;
+  isUser: boolean;
+  timestamp: Date;
+}
+
+interface ChatbotFloatingProps {
+  analysisResult?: AnalysisResult;
+  contentPreview?: string;
+  isResultsPage?: boolean;
+}
+
+const ChatbotFloating: React.FC<ChatbotFloatingProps> = ({ 
+  analysisResult, 
+  contentPreview,
+  isResultsPage = false
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [chatInput, setChatInput] = useState('');
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [isRecording, setIsRecording] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { theme } = useTheme();
+  const inputRef = useRef<HTMLInputElement>(null);
+  
+  // Introduction message shown when chat opens
+  useEffect(() => {
+    if (isOpen && chatMessages.length === 0) {
+      const welcomeMessage = analysisResult 
+        ? `Hello! I can help answer questions about this ${analysisResult.classification} content. What would you like to know?`
+        : "Hello! I'm TruthLens AI Assistant. How can I help you verify information today?";
+      
+      setChatMessages([{
+        text: welcomeMessage,
+        isUser: false,
+        timestamp: new Date()
+      }]);
+    }
+  }, [isOpen, analysisResult, chatMessages.length]);
+  
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [chatMessages]);
+  
+  // Focus input when chat opens
+  useEffect(() => {
+    if (isOpen && !isMinimized && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isOpen, isMinimized]);
+
+  // Create the chatbot mutation
+  const chatbotMutation = useMutation({
+    mutationFn: async (question: string) => {
+      const payload = analysisResult ? {
+        question,
+        content: contentPreview || '',
+        analysisResult
+      } : {
+        question,
+        content: '',
+        analysisResult: null
+      };
+      
+      const response = await apiRequest('POST', '/api/chatbot', payload);
+      return await response.json();
+    },
+    onSuccess: (data) => {
+      // Add bot response to messages
+      setChatMessages(prev => [
+        ...prev,
+        {
+          text: data.response,
+          isUser: false,
+          timestamp: new Date()
+        }
+      ]);
+    },
+    onError: (error) => {
+      // Handle error
+      setChatMessages(prev => [
+        ...prev,
+        {
+          text: "Sorry, I couldn't process your question. Please try again.",
+          isUser: false,
+          timestamp: new Date()
+        }
+      ]);
+    }
+  });
+
+  const handleChatSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!chatInput.trim()) return;
+    
+    // Add user message to chat
+    const userMessage: ChatMessage = {
+      text: chatInput,
+      isUser: true,
+      timestamp: new Date()
+    };
+    
+    setChatMessages(prev => [...prev, userMessage]);
+    
+    // Send question to API
+    chatbotMutation.mutate(chatInput);
+    
+    // Clear input
+    setChatInput('');
+  };
+  
+  const handleSuggestionClick = (suggestion: string) => {
+    setChatInput(suggestion);
+    
+    // Focus the input after setting the value
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  };
+  
+  const toggleChat = () => {
+    setIsOpen(prev => !prev);
+    setIsMinimized(false);
+  };
+  
+  const minimizeChat = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsMinimized(true);
+  };
+  
+  const maximizeChat = () => {
+    setIsMinimized(false);
+  };
+  
+  const closeChat = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsOpen(false);
+  };
+  
+  const startVoiceRecording = () => {
+    // Voice recording logic would go here
+    setIsRecording(true);
+    setTimeout(() => {
+      setIsRecording(false);
+      setChatInput('What evidence supports this being classified as misinformation?');
+    }, 1500);
+  };
+  
+  // Suggestions based on analysis result
+  const getSuggestions = () => {
+    if (!analysisResult) return [];
+    
+    return [
+      `Why is this considered ${analysisResult.classification}?`,
+      "Can you debunk the main claims?",
+      "What are reliable sources on this topic?"
+    ];
+  };
+  
+  const suggestions = getSuggestions();
+
+  return (
+    <div className={`fixed ${isResultsPage ? 'left-4 bottom-4' : 'right-4 bottom-4'} z-50`}>
+      {/* Floating Chat Button */}
+      {!isOpen && (
+        <motion.button
+          onClick={toggleChat}
+          className="bg-primary text-white p-4 rounded-full shadow-lg flex items-center justify-center"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <MessageSquare className="h-6 w-6" />
+        </motion.button>
+      )}
+      
+      {/* Chat Window */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.9 }}
+            animate={{ 
+              opacity: 1, 
+              y: 0, 
+              scale: 1,
+              height: isMinimized ? '60px' : '500px',
+              width: isMinimized ? '240px' : '350px'
+            }}
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            transition={{ duration: 0.2 }}
+            className={`rounded-2xl overflow-hidden shadow-xl border border-gray-200 dark:border-gray-700 ${
+              theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+            }`}
+          >
+            {/* Chat Header */}
+            <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-primary/10">
+              <div className="flex items-center" onClick={maximizeChat}>
+                <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center mr-2">
+                  <MessageSquare className="h-4 w-4 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium flex items-center">
+                    TruthLens AI
+                    <span className="ml-2 inline-block w-2 h-2 bg-green-500 rounded-full"></span>
+                  </h3>
+                  {isMinimized && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Click to expand</p>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center">
+                {!isMinimized && (
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-7 w-7" 
+                    onClick={minimizeChat}
+                  >
+                    <MinusSquare className="h-4 w-4" />
+                  </Button>
+                )}
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  className="h-7 w-7 ml-1" 
+                  onClick={closeChat}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            
+            {/* Chat Content - Only shown when not minimized */}
+            {!isMinimized && (
+              <>
+                {/* Messages Area */}
+                <div className="p-3 h-[380px] overflow-y-auto bg-gray-50 dark:bg-gray-900/50">
+                  <div className="space-y-3">
+                    {chatMessages.map((message, index) => (
+                      <motion.div 
+                        key={index} 
+                        className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <div 
+                          className={`max-w-[80%] p-3 rounded-2xl ${
+                            message.isUser 
+                              ? 'bg-primary text-white' 
+                              : 'bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700'
+                          }`}
+                        >
+                          <p className="text-sm whitespace-pre-wrap">{message.text}</p>
+                          <span className="text-xs opacity-60 mt-1 block text-right">
+                            {message.timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                          </span>
+                        </div>
+                      </motion.div>
+                    ))}
+                    
+                    {chatbotMutation.isPending && (
+                      <div className="flex justify-start">
+                        <div className="bg-gray-100 dark:bg-gray-800 p-3 rounded-2xl border border-gray-200 dark:border-gray-700 max-w-[80%]">
+                          <div className="flex items-center space-x-2">
+                            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                            <span className="text-sm text-gray-500 dark:text-gray-400">Thinking...</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Empty div for scrolling to bottom */}
+                    <div ref={messagesEndRef} />
+                  </div>
+                </div>
+                
+                {/* Suggestions */}
+                {suggestions.length > 0 && chatMessages.length <= 1 && (
+                  <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Suggested questions:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {suggestions.map((suggestion, index) => (
+                        <button
+                          key={index}
+                          onClick={() => handleSuggestionClick(suggestion)}
+                          className="text-xs px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                        >
+                          {suggestion}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Input Area */}
+                <div className="p-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                  <form onSubmit={handleChatSubmit} className="relative">
+                    <input 
+                      ref={inputRef}
+                      type="text" 
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      placeholder="Ask me anything about this news..." 
+                      className="w-full py-2 px-10 pr-12 rounded-full border border-gray-300 dark:border-gray-600 text-sm bg-white dark:bg-gray-800 focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                      disabled={chatbotMutation.isPending}
+                    />
+                    
+                    <button 
+                      type="button"
+                      onClick={startVoiceRecording}
+                      disabled={isRecording || chatbotMutation.isPending}
+                      className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                    >
+                      {isRecording ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                      ) : (
+                        <Mic className="h-4 w-4" />
+                      )}
+                    </button>
+                    
+                    <button 
+                      type="submit"
+                      disabled={chatbotMutation.isPending || !chatInput.trim()}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-primary hover:text-primary/80"
+                    >
+                      <Send className="h-4 w-4" />
+                    </button>
+                  </form>
+                </div>
+              </>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+export default ChatbotFloating;
