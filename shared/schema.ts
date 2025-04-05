@@ -86,4 +86,24 @@ export type AnalysisResult = {
     politicalLeaning: string;
     politicalLeaningScore: number;
   };
+  // New fields for AI-powered news summarizer and explanation
+  summary?: string;
+  // XAI (Explainable AI) details
+  xai?: {
+    keyPhrases: {
+      text: string;
+      impact: number; // -1 to 1 scale, negative indicates fake news contribution
+      explanation: string;
+    }[];
+    alternativeSources: {
+      title: string;
+      url: string;
+      trustScore: number;
+    }[];
+    detectionConfidence: {
+      algorithm: string;
+      score: number;
+      explanation: string;
+    }[];
+  };
 };

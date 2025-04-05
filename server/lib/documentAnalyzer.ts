@@ -1,10 +1,9 @@
-import type { AnalysisResult } from "@shared/schema";
-import { analyzeText } from "./analyzer";
-import { JSDOM } from "jsdom";
-// Import mammoth for DOCX processing
-import mammoth from "mammoth";
-// Use PDF lib for PDF handling
+import { AnalysisResult } from '@shared/schema';
+import { JSDOM } from 'jsdom';
 import { PDFDocument } from 'pdf-lib';
+import { analyzeText } from './analyzer';
+import mammoth from 'mammoth';
+import { enhanceAnalysisWithAI } from './aiEnhancer';
 
 /**
  * Extract text from PDF document
@@ -13,28 +12,49 @@ import { PDFDocument } from 'pdf-lib';
  */
 async function extractTextFromPdf(buffer: Buffer): Promise<string> {
   try {
-    // Basic extraction from PDF metadata
     const pdfDoc = await PDFDocument.load(buffer);
     const pageCount = pdfDoc.getPageCount();
-    const title = pdfDoc.getTitle() || '';
-    const author = pdfDoc.getAuthor() || '';
-    const subject = pdfDoc.getSubject() || '';
-    const keywords = pdfDoc.getKeywords() || '';
     
-    // Since pdf-lib doesn't extract actual text content,
-    // we're creating a summary from the metadata
-    const metadataText = [
-      title ? `Title: ${title}` : '',
-      author ? `Author: ${author}` : '',
-      subject ? `Subject: ${subject}` : '',
-      keywords ? `Keywords: ${keywords}` : '',
-      `Document contains ${pageCount} page(s).`
-    ].filter(Boolean).join('\n');
-    
-    return metadataText || "PDF document content could not be extracted fully. Please enter key text manually.";
+    // Since pdf-lib doesn't do text extraction, we're returning a basic message
+    // In a real application, use a proper PDF text extraction library
+    return `This document contains ${pageCount} pages. [PDF content extraction limited in this version]`;
   } catch (error) {
-    console.error("Error parsing PDF:", error);
-    throw new Error("Failed to parse PDF document");
+    console.error('Error extracting text from PDF:', error);
+    throw new Error('Failed to extract text from PDF');
+  }
+}
+
+/**
+ * Extract text from DOCX document using mammoth
+ */
+async function extractTextFromDocx(buffer: Buffer): Promise<string> {
+  try {
+    const result = await mammoth.extractRawText({ buffer });
+    return result.value;
+  } catch (error) {
+    console.error('Error extracting text from DOCX:', error);
+    throw new Error('Failed to extract text from DOCX');
+  }
+}
+
+/**
+ * Extract text from HTML document
+ */
+function extractTextFromHtml(buffer: Buffer): string {
+  try {
+    const html = buffer.toString('utf-8');
+    const dom = new JSDOM(html);
+    const document = dom.window.document;
+    
+    // Remove script elements to prevent any potential code execution
+    const scriptElements = document.querySelectorAll('script');
+    scriptElements.forEach((el: Element) => el.remove());
+    
+    // Get text content
+    return document.body.textContent || '';
+  } catch (error) {
+    console.error('Error extracting text from HTML:', error);
+    throw new Error('Failed to extract text from HTML');
   }
 }
 
@@ -43,123 +63,54 @@ async function extractTextFromPdf(buffer: Buffer): Promise<string> {
  */
 function preprocessText(text: string): string {
   return text
-    .replace(/\s+/g, ' ')  // Replace multiple whitespace with single space
-    .replace(/\n+/g, ' ')  // Replace newlines with spaces
-    .replace(/[^\w\s.,!?;:'"()-]/g, '')  // Remove special characters except common punctuation
+    .replace(/\s+/g, ' ') // Replace multiple whitespaces with a single space
+    .replace(/\n+/g, '\n') // Replace multiple newlines with a single newline
     .trim();
 }
 
 export async function analyzeDocument(docBuffer: Buffer, filename: string): Promise<AnalysisResult> {
   try {
-    // Determine file type based on filename extension
-    const fileExtension = filename.split('.').pop()?.toLowerCase();
-    let extractedText = '';
-    let fileType = fileExtension?.toUpperCase() || 'UNKNOWN';
-
-    if (fileExtension === 'pdf') {
-      // Process PDF document using real pdf-parse
-      extractedText = await extractTextFromPdf(docBuffer);
-      fileType = 'PDF';
-    } else if (fileExtension === 'docx') {
-      // Process DOCX document
-      const result = await mammoth.extractRawText({ buffer: docBuffer });
-      extractedText = result.value;
-      fileType = 'DOCX';
-    } else if (fileExtension === 'txt') {
-      // Process plain text
-      extractedText = docBuffer.toString('utf-8');
-      fileType = 'TEXT';
-    } else if (fileExtension === 'html' || fileExtension === 'htm') {
-      // Process HTML
-      const html = docBuffer.toString('utf-8');
-      const dom = new JSDOM(html);
-      const document = dom.window.document;
-      
-      // Remove script and style elements
-      const scriptElements = document.querySelectorAll('script, style');
-      scriptElements.forEach((el: Element) => el.remove());
-      
-      extractedText = document.body.textContent || '';
-      fileType = 'HTML';
-    } else {
-      // Unsupported file format
-      return {
-        classification: "misleading",
-        confidence: 0.5,
-        reasoning: [`Unsupported file format: .${fileExtension}`],
-        sourceCredibility: {
-          name: "Document Source",
-          score: 0.5,
-          level: "medium"
-        },
-        factChecks: [],
-        sentiment: {
-          emotionalTone: "Neutral",
-          emotionalToneScore: 0.5,
-          languageStyle: "Unknown",
-          languageStyleScore: 0.5,
-          politicalLeaning: "Neutral",
-          politicalLeaningScore: 0.5
-        }
-      };
-    }
-
-    // Apply more advanced preprocessing
-    extractedText = preprocessText(extractedText);
-
-    // If no text was extracted, return an error result
-    if (!extractedText || extractedText.length < 10) {
-      return {
-        classification: "misleading",
-        confidence: 0.5,
-        reasoning: ["Insufficient text could be extracted from the document"],
-        sourceCredibility: {
-          name: "Document Source",
-          score: 0.5,
-          level: "medium"
-        },
-        factChecks: [],
-        sentiment: {
-          emotionalTone: "Neutral",
-          emotionalToneScore: 0.5,
-          languageStyle: "Unknown",
-          languageStyleScore: 0.5,
-          politicalLeaning: "Neutral",
-          politicalLeaningScore: 0.5
-        }
-      };
-    }
-
-    // Analyze the extracted text using the text analyzer
-    const analysisResult = await analyzeText(extractedText);
-
-    // Modify the result to indicate it came from a document
-    return {
-      ...analysisResult,
-      reasoning: [`Text extracted from ${fileExtension.toUpperCase()} document: ${filename}`, ...analysisResult.reasoning]
-    };
-  } catch (error) {
-    console.error("Error analyzing document:", error);
+    // Determine document type based on file extension
+    const fileExt = filename.split('.').pop()?.toLowerCase();
     
-    // Return a default error result
-    return {
-      classification: "misleading",
-      confidence: 0.5,
-      reasoning: ["Error processing document. Could not extract or analyze text."],
-      sourceCredibility: {
-        name: "Document Source",
-        score: 0.5,
-        level: "medium"
-      },
-      factChecks: [],
-      sentiment: {
-        emotionalTone: "Neutral",
-        emotionalToneScore: 0.5,
-        languageStyle: "Unknown",
-        languageStyleScore: 0.5,
-        politicalLeaning: "Neutral",
-        politicalLeaningScore: 0.5
-      }
-    };
+    let extractedText = '';
+    
+    // Extract text based on document type
+    switch (fileExt) {
+      case 'pdf':
+        extractedText = await extractTextFromPdf(docBuffer);
+        break;
+      case 'docx':
+      case 'doc':
+        extractedText = await extractTextFromDocx(docBuffer);
+        break;
+      case 'html':
+      case 'htm':
+        extractedText = extractTextFromHtml(docBuffer);
+        break;
+      case 'txt':
+        extractedText = docBuffer.toString('utf-8');
+        break;
+      default:
+        throw new Error('Unsupported document format');
+    }
+    
+    // Preprocess the extracted text
+    const processedText = preprocessText(extractedText);
+    
+    if (!processedText || processedText.length < 10) {
+      throw new Error('Document contains insufficient text content for analysis');
+    }
+    
+    // Analyze the text content
+    const analysisResult = await analyzeText(processedText);
+    
+    // Enhance analysis with AI features
+    const enhancedResult = await enhanceAnalysisWithAI(analysisResult, processedText);
+    
+    return enhancedResult;
+  } catch (error) {
+    console.error('Error analyzing document:', error);
+    throw error;
   }
 }

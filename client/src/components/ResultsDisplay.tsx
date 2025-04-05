@@ -7,8 +7,9 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { 
-  AlertCircle, Download, Share, Search, 
-  ChevronDown, ExternalLink 
+  AlertCircle, Download, Share, Search, Lightbulb,
+  ChevronDown, ExternalLink, FileText, Microscope, 
+  Code, Link as LinkIcon, MessageSquare
 } from 'lucide-react';
 import { AnalysisResult } from '@shared/schema';
 import { 
@@ -364,6 +365,188 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result, contentPreview,
                             ? 'This content uses somewhat emotional language that may influence reader perception. Be aware of how tone affects the presentation of facts.'
                             : 'This content uses mostly neutral language and presents information in a balanced way without excessive emotional appeals.'}
                       </p>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+
+                {/* AI-Powered Summary (NEW) */}
+                {result.summary && (
+                  <Collapsible defaultOpen className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                    <div className="bg-white dark:bg-gray-800 px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                      <div className="flex items-center">
+                        <FileText className="h-4 w-4 mr-2 text-primary" />
+                        <h5 className="font-medium text-sm">AI Summary</h5>
+                      </div>
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" size="sm" className="p-0 h-8 w-8">
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </CollapsibleTrigger>
+                    </div>
+                    <CollapsibleContent>
+                      <div className="p-4 bg-white dark:bg-gray-800">
+                        <div className="prose prose-sm dark:prose-invert max-w-none">
+                          <p>{result.summary}</p>
+                        </div>
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                )}
+
+                {/* Explainable AI (NEW) */}
+                {result.xai && (
+                  <Collapsible defaultOpen className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                    <div className="bg-white dark:bg-gray-800 px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                      <div className="flex items-center">
+                        <Microscope className="h-4 w-4 mr-2 text-primary" />
+                        <h5 className="font-medium text-sm">Why We Flagged This {result.classification === 'real' ? 'as Real' : 'Content'}</h5>
+                      </div>
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" size="sm" className="p-0 h-8 w-8">
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </CollapsibleTrigger>
+                    </div>
+                    <CollapsibleContent>
+                      <div className="p-4 bg-white dark:bg-gray-800">
+                        {/* Key Phrases */}
+                        {result.xai.keyPhrases && result.xai.keyPhrases.length > 0 && (
+                          <div className="mb-4">
+                            <h6 className="text-sm font-medium mb-2 flex items-center">
+                              <Code className="h-3 w-3 mr-1" /> Key Phrases
+                            </h6>
+                            <div className="space-y-2">
+                              {result.xai.keyPhrases.map((phrase, idx) => (
+                                <div key={idx} className="p-3 rounded-md bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className={`text-sm font-medium ${phrase.impact < 0 ? 'text-red-500' : 'text-green-500'}`}>
+                                      "{phrase.text}"
+                                    </span>
+                                    <div className="flex items-center">
+                                      <span className="text-xs text-gray-500 mr-1">Impact:</span>
+                                      <div className="w-16 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                        <div 
+                                          className={`h-full ${phrase.impact < 0 ? 'bg-red-500' : 'bg-green-500'}`}
+                                          style={{ width: `${Math.abs(phrase.impact) * 100}%` }}
+                                        ></div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <p className="text-xs text-gray-600 dark:text-gray-300">{phrase.explanation}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Detection Confidence */}
+                        {result.xai.detectionConfidence && result.xai.detectionConfidence.length > 0 && (
+                          <div className="mb-4">
+                            <h6 className="text-sm font-medium mb-2 flex items-center">
+                              <Lightbulb className="h-3 w-3 mr-1" /> Detection Methods
+                            </h6>
+                            <div className="space-y-2">
+                              {result.xai.detectionConfidence.map((detection, idx) => (
+                                <div key={idx} className="flex items-center justify-between p-2 border-b border-gray-100 dark:border-gray-800">
+                                  <div className="flex items-center">
+                                    <span className="text-sm">{detection.algorithm}</span>
+                                  </div>
+                                  <div className="flex items-center">
+                                    <span className="text-xs text-gray-500 mr-2">{Math.round(detection.score * 100)}%</span>
+                                    <div className="w-16 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                      <div 
+                                        className="h-full bg-primary"
+                                        style={{ width: `${detection.score * 100}%` }}
+                                      ></div>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                            <p className="text-xs text-gray-500 mt-2">{result.xai.detectionConfidence[0]?.explanation}</p>
+                          </div>
+                        )}
+
+                        {/* Alternative Sources */}
+                        {result.xai.alternativeSources && result.xai.alternativeSources.length > 0 && (
+                          <div>
+                            <h6 className="text-sm font-medium mb-2 flex items-center">
+                              <LinkIcon className="h-3 w-3 mr-1" /> Credible Alternative Sources
+                            </h6>
+                            <div className="space-y-2">
+                              {result.xai.alternativeSources.map((source, idx) => (
+                                <a 
+                                  key={idx}
+                                  href={source.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center justify-between p-2 rounded-md bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                                >
+                                  <span className="text-sm text-primary">{source.title}</span>
+                                  <div className="flex items-center">
+                                    <span className="text-xs text-gray-500 mr-1">Trust:</span>
+                                    <div className="w-8 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                      <div 
+                                        className="h-full bg-green-500"
+                                        style={{ width: `${source.trustScore * 100}%` }}
+                                      ></div>
+                                    </div>
+                                  </div>
+                                </a>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                )}
+
+                {/* AI Debunker Chatbot (NEW) */}
+                <Collapsible className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                  <div className="bg-white dark:bg-gray-800 px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                    <div className="flex items-center">
+                      <MessageSquare className="h-4 w-4 mr-2 text-primary" />
+                      <h5 className="font-medium text-sm">AI Assistant (Beta)</h5>
+                    </div>
+                    <CollapsibleTrigger asChild>
+                      <Button variant="ghost" size="sm" className="p-0 h-8 w-8">
+                        <ChevronDown className="h-4 w-4" />
+                      </Button>
+                    </CollapsibleTrigger>
+                  </div>
+                  <CollapsibleContent>
+                    <div className="p-4 bg-white dark:bg-gray-800">
+                      <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                        <div className="mb-3">
+                          <p className="text-sm mb-2">Ask our AI assistant questions about this content:</p>
+                          <ul className="space-y-1 text-xs text-gray-600 dark:text-gray-300">
+                            <li className="flex items-center">
+                              <span className="inline-block w-1 h-1 bg-primary rounded-full mr-1.5"></span>
+                              "Why is this considered {result.classification}?"
+                            </li>
+                            <li className="flex items-center">
+                              <span className="inline-block w-1 h-1 bg-primary rounded-full mr-1.5"></span>
+                              "Can you debunk the main claims?"
+                            </li>
+                            <li className="flex items-center">
+                              <span className="inline-block w-1 h-1 bg-primary rounded-full mr-1.5"></span>
+                              "What are reliable sources on this topic?"
+                            </li>
+                          </ul>
+                        </div>
+                        <div className="relative">
+                          <input 
+                            type="text" 
+                            placeholder="Ask a question..." 
+                            className="w-full py-2 px-3 rounded-md border border-gray-300 dark:border-gray-600 text-sm bg-white dark:bg-gray-800 focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                          />
+                          <Button size="sm" className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7">
+                            Ask
+                          </Button>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2">This feature is in beta. Responses are generated by AI and may not always be accurate.</p>
+                      </div>
                     </div>
                   </CollapsibleContent>
                 </Collapsible>

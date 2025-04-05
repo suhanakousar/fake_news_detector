@@ -8,6 +8,7 @@ import { analyzeText } from "./lib/analyzer";
 import { analyzeImage } from "./lib/imageAnalyzer";
 import { analyzeUrl } from "./lib/urlAnalyzer";
 import { analyzeDocument } from "./lib/documentAnalyzer";
+import { generateChatbotResponse } from "./lib/chatbotService";
 import session from "express-session";
 import MemoryStore from "memorystore";
 import multer from "multer";
@@ -463,6 +464,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error analyzing document:", error);
       res.status(500).json({ message: "An error occurred during document analysis" });
+    }
+  });
+  
+  // AI Debunker Chatbot
+  app.post("/api/chatbot", async (req, res) => {
+    try {
+      const { question, content, classification, reasoning } = req.body;
+      
+      if (!question || typeof question !== 'string' || question.trim() === '') {
+        return res.status(400).json({ message: "Question is required" });
+      }
+      
+      if (!content || typeof content !== 'string' || content.trim() === '') {
+        return res.status(400).json({ message: "Content context is required" });
+      }
+      
+      if (!classification || !reasoning || !Array.isArray(reasoning)) {
+        return res.status(400).json({ message: "Classification and reasoning are required" });
+      }
+      
+      const response = await generateChatbotResponse(
+        question,
+        content,
+        classification,
+        reasoning
+      );
+      
+      res.json({ response });
+    } catch (error) {
+      console.error("Error generating chatbot response:", error);
+      res.status(500).json({ 
+        message: "An error occurred while generating a response",
+        response: "I'm sorry, I couldn't generate a response at this time. Please try again later."
+      });
     }
   });
 

@@ -1,6 +1,7 @@
 import type { AnalysisResult } from "@shared/schema";
 import { fetchFactChecks } from "./factCheck";
 import { analyzeWithPerplexity } from "./perplexityAnalyzer";
+import { enhanceAnalysisWithAI } from "./aiEnhancer";
 
 /**
  * Analyzes text content for potential misinformation
@@ -152,8 +153,8 @@ export async function analyzeText(text: string): Promise<AnalysisResult> {
     };
   }
 
-  // Construct the final result
-  return {
+  // Construct the base result
+  const baseResult: AnalysisResult = {
     classification,
     confidence: classification === "fake" ? 0.8 : (classification === "misleading" ? 0.6 : 0.7),
     reasoning,
@@ -168,4 +169,12 @@ export async function analyzeText(text: string): Promise<AnalysisResult> {
       politicalLeaningScore
     }
   };
+  
+  // Enhance the result with AI-powered features (summarization and XAI)
+  try {
+    return await enhanceAnalysisWithAI(baseResult, text);
+  } catch (error) {
+    console.error('Error enhancing analysis with AI:', error);
+    return baseResult;
+  }
 }

@@ -1,5 +1,6 @@
 import type { AnalysisResult } from "@shared/schema";
 import { analyzeText } from "./analyzer";
+import { enhanceAnalysisWithAI } from "./aiEnhancer";
 import axios from "axios";
 import { JSDOM } from "jsdom";
 
