@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,11 +9,19 @@ import { useToast } from '@/hooks/use-toast';
 import { 
   AlignLeft, Link, FileText, Image, Mic, 
   Search, Globe, FileSearch, ImageUp, Waves,
-  Upload, FileUp 
+  Upload, FileUp, Square, Loader
 } from 'lucide-react';
 import ResultsDisplay from './ResultsDisplay';
 import { analyzeContent } from '@/lib/analysis';
 import { AnalysisResult } from '@shared/schema';
+
+// Add Speech Recognition types
+declare global {
+  interface Window {
+    SpeechRecognition: any;
+    webkitSpeechRecognition: any;
+  }
+}
 
 const NewsAnalyzer: React.FC = () => {
   const [activeTab, setActiveTab] = useState('text');
@@ -25,6 +33,107 @@ const NewsAnalyzer: React.FC = () => {
   const [showResults, setShowResults] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  
+  // Voice recording states
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordedText, setRecordedText] = useState('');
+  const [voiceInput, setVoiceInput] = useState('');
+  const [speechRecognition, setSpeechRecognition] = useState<any>(null);
+  const visualizerRef = useRef<HTMLDivElement>(null);
+  
+  // Initialize speech recognition
+  useEffect(() => {
+    if (activeTab === 'voice') {
+      if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+        
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
+        
+        recognition.onresult = (event: any) => {
+          let interimTranscript = '';
+          let finalTranscript = '';
+          
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const transcript = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+              finalTranscript += transcript;
+            } else {
+              interimTranscript += transcript;
+            }
+          }
+          
+          setRecordedText(finalTranscript || interimTranscript);
+          setVoiceInput(finalTranscript || interimTranscript);
+        };
+        
+        recognition.onerror = (event: any) => {
+          console.error('Speech recognition error', event.error);
+          if (event.error === 'not-allowed') {
+            toast({
+              title: "Microphone access denied",
+              description: "Please allow microphone access to use voice input",
+              variant: "destructive",
+            });
+            stopRecording();
+          }
+        };
+        
+        setSpeechRecognition(recognition);
+      } else {
+        toast({
+          title: "Speech recognition not supported",
+          description: "Your browser doesn't support speech recognition. Try using Chrome or Edge.",
+          variant: "destructive",
+        });
+      }
+    }
+    
+    return () => {
+      if (speechRecognition) {
+        stopRecording();
+      }
+    };
+  }, [activeTab]);
+  
+  const startRecording = () => {
+    if (speechRecognition) {
+      try {
+        speechRecognition.start();
+        setIsRecording(true);
+        if (visualizerRef.current) {
+          visualizerRef.current.classList.remove('hidden');
+        }
+        toast({
+          title: "Recording started",
+          description: "Speak clearly into your microphone",
+        });
+      } catch (error) {
+        console.error('Failed to start recording:', error);
+        toast({
+          title: "Failed to start recording",
+          description: "Please try again or use text input",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+  
+  const stopRecording = () => {
+    if (speechRecognition) {
+      try {
+        speechRecognition.stop();
+      } catch (error) {
+        console.error('Error stopping recording:', error);
+      }
+      setIsRecording(false);
+      if (visualizerRef.current) {
+        visualizerRef.current.classList.add('hidden');
+      }
+    }
+  };
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
@@ -106,12 +215,21 @@ const NewsAnalyzer: React.FC = () => {
           break;
         
         case 'voice':
-          toast({
-            title: "Feature in development",
-            description: "Voice analysis is coming soon!",
-          });
-          setIsAnalyzing(false);
-          return;
+          if (!voiceInput.trim()) {
+            toast({
+              title: "No voice input detected",
+              description: "Please record your voice or upload an audio file",
+              variant: "destructive",
+            });
+            setIsAnalyzing(false);
+            return;
+          }
+          
+          if (isRecording) {
+            stopRecording();
+          }
+          
+          request = { text: voiceInput };
       }
       
       // Analyze content
@@ -355,12 +473,28 @@ const NewsAnalyzer: React.FC = () => {
             <div className="mb-6">
               <div className="rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-6">
                 <div className="flex flex-col items-center justify-center">
-                  <div className="mb-4 w-16 h-16 flex items-center justify-center rounded-full bg-red-100 text-red-600 cursor-pointer hover:bg-red-200 transition-colors">
-                    <Mic className="h-8 w-8" />
+                  <div 
+                    className={`mb-4 w-16 h-16 flex items-center justify-center rounded-full cursor-pointer transition-colors ${isRecording 
+                      ? 'bg-red-600 text-white animate-pulse' 
+                      : 'bg-red-100 text-red-600 hover:bg-red-200'}`}
+                    onClick={isRecording ? stopRecording : startRecording}
+                    role="button"
+                    aria-label={isRecording ? "Stop recording" : "Start recording"}
+                  >
+                    {isRecording ? (
+                      <Square className="h-6 w-6" />
+                    ) : (
+                      <Mic className="h-8 w-8" />
+                    )}
                   </div>
-                  <p className="text-sm font-medium mb-4">Click to start recording</p>
+                  <p className="text-sm font-medium mb-4">
+                    {isRecording ? "Click to stop recording" : "Click to start recording"}
+                  </p>
                   
-                  <div className="w-full mb-6 flex justify-center hidden">
+                  <div 
+                    ref={visualizerRef}
+                    className="w-full mb-6 flex justify-center hidden"
+                  >
                     <div className="flex space-x-1">
                       <div className="w-1 h-6 bg-primary rounded-full animate-pulse"></div>
                       <div className="w-1 h-10 bg-primary rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
@@ -369,6 +503,13 @@ const NewsAnalyzer: React.FC = () => {
                       <div className="w-1 h-7 bg-primary rounded-full animate-pulse" style={{ animationDelay: '0.8s' }}></div>
                     </div>
                   </div>
+                  
+                  {voiceInput && (
+                    <div className="w-full mb-4 p-4 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-lg">
+                      <p className="text-sm text-gray-600 dark:text-gray-300 mb-1 font-medium">Transcribed Text:</p>
+                      <p className="text-sm italic">{voiceInput}</p>
+                    </div>
+                  )}
                   
                   <div className="text-center">
                     <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Or upload audio file</p>
@@ -391,10 +532,25 @@ const NewsAnalyzer: React.FC = () => {
             </div>
             <div className="flex justify-end">
               <Button 
-                disabled={true}
+                onClick={handleAnalyze}
+                disabled={isAnalyzing || (!voiceInput && !selectedFile)}
                 className="rounded-lg shadow-md hover:shadow-lg"
               >
-                <Waves className="mr-2 h-4 w-4" /> Analyze Audio
+                {isAnalyzing ? (
+                  <>
+                    <span className="animate-spin mr-2">
+                      <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    </span>
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <Waves className="mr-2 h-4 w-4" /> Analyze Voice Input
+                  </>
+                )}
               </Button>
             </div>
           </>
