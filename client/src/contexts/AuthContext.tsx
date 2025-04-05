@@ -8,6 +8,9 @@ interface AuthContextType {
   loading: boolean;
   register: (username: string, email: string, password: string) => Promise<void>;
   login: (username: string, password: string) => Promise<void>;
+  loginWithGoogle: (email: string, name: string, token: string) => Promise<void>;
+  loginWithFacebook: (email: string, name: string, token: string) => Promise<void>;
+  forgotPassword: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
 }
@@ -90,6 +93,77 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const loginWithGoogle = async (email: string, name: string, token: string) => {
+    try {
+      setLoading(true);
+      const response = await apiRequest('POST', '/api/auth/social/google', { email, name, token });
+      const userData = await response.json();
+      setUser(userData);
+      
+      toast({
+        title: "Google login successful!",
+        description: `Welcome, ${userData.username}!`,
+      });
+    } catch (error) {
+      console.error('Google login error:', error);
+      toast({
+        title: "Google login failed",
+        description: error instanceof Error ? error.message : "Authentication failed",
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loginWithFacebook = async (email: string, name: string, token: string) => {
+    try {
+      setLoading(true);
+      const response = await apiRequest('POST', '/api/auth/social/facebook', { email, name, token });
+      const userData = await response.json();
+      setUser(userData);
+      
+      toast({
+        title: "Facebook login successful!",
+        description: `Welcome, ${userData.username}!`,
+      });
+    } catch (error) {
+      console.error('Facebook login error:', error);
+      toast({
+        title: "Facebook login failed",
+        description: error instanceof Error ? error.message : "Authentication failed",
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const forgotPassword = async (email: string) => {
+    try {
+      setLoading(true);
+      const response = await apiRequest('POST', '/api/auth/forgot-password', { email });
+      const data = await response.json();
+      
+      toast({
+        title: "Password reset email sent",
+        description: data.message || "If an account with that email exists, a password reset link has been sent",
+      });
+    } catch (error) {
+      console.error('Forgot password error:', error);
+      toast({
+        title: "Password reset failed",
+        description: error instanceof Error ? error.message : "An error occurred",
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const logout = async () => {
     try {
       setLoading(true);
@@ -117,7 +191,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user, 
       loading, 
       register, 
-      login, 
+      login,
+      loginWithGoogle,
+      loginWithFacebook,
+      forgotPassword,
       logout,
       isAuthenticated: !!user 
     }}>

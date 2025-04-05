@@ -12,6 +12,13 @@ import session from "express-session";
 import MemoryStore from "memorystore";
 import multer from "multer";
 
+// Extend express-session with userId
+declare module 'express-session' {
+  interface SessionData {
+    userId: number;
+  }
+}
+
 // Create a memory store for sessions
 const SessionStore = MemoryStore(session);
 
@@ -151,6 +158,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Logged out successfully" });
     });
   });
+  
+  // Forgot password endpoint
+  app.post("/api/auth/forgot-password", async (req, res) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email || typeof email !== 'string' || email.trim() === '') {
+        return res.status(400).json({ message: "Email is required" });
+      }
+      
+      // Check if user exists
+      const user = await storage.getUserByEmail(email);
+      
+      // For security reasons, we always return a success message
+      // even if the email doesn't exist in our system
+      if (!user) {
+        return res.status(200).json({ 
+          message: "If an account with that email exists, a password reset link has been sent" 
+        });
+      }
+      
+      // In a real application, we would:
+      // 1. Generate a secure token and store it associated with the user
+      // 2. Set an expiration time for the token
+      // 3. Send an email with a link containing the token
+      
+      // For our demo, we'll return a success message
+      res.status(200).json({ 
+        message: "If an account with that email exists, a password reset link has been sent" 
+      });
+    } catch (error) {
+      console.error("Forgot password error:", error);
+      // Don't leak information about the error
+      res.status(200).json({ 
+        message: "If an account with that email exists, a password reset link has been sent" 
+      });
+    }
+  });
 
   app.get("/api/auth/me", async (req, res) => {
     if (!req.session.userId) {
@@ -168,6 +213,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(userWithoutPassword);
     } catch (error) {
       res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  // Social login endpoints
+  app.post("/api/auth/social/google", async (req, res) => {
+    try {
+      const { email, name, token } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+      
+      // In a production environment, we would verify the Google token here
+      // For our purposes, we'll accept the provided data
+      
+      // Check if user exists with this email
+      let user = await storage.getUserByEmail(email);
+      
+      if (!user) {
+        // Create new user with social login
+        const username = name?.replace(/\s+/g, '').toLowerCase() || email.split('@')[0];
+        const randomPassword = Math.random().toString(36).slice(-10);
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(randomPassword, salt);
+        
+        user = await storage.createUser({
+          username,
+          email,
+          password: hashedPassword,
+          role: "user",
+          isActive: true
+        });
+      }
+      
+      // Set session and send back user
+      req.session.userId = user.id;
+      
+      // Remove password before returning user
+      const { password, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      console.error("Google auth error:", error);
+      res.status(500).json({ message: "Google authentication failed" });
+    }
+  });
+  
+  app.post("/api/auth/social/facebook", async (req, res) => {
+    try {
+      const { email, name, token } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+      
+      // In a production environment, we would verify the Facebook token here
+      // For our purposes, we'll accept the provided data
+      
+      // Check if user exists with this email
+      let user = await storage.getUserByEmail(email);
+      
+      if (!user) {
+        // Create new user with social login
+        const username = name?.replace(/\s+/g, '').toLowerCase() || email.split('@')[0];
+        const randomPassword = Math.random().toString(36).slice(-10);
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(randomPassword, salt);
+        
+        user = await storage.createUser({
+          username,
+          email,
+          password: hashedPassword,
+          role: "user",
+          isActive: true
+        });
+      }
+      
+      // Set session and send back user
+      req.session.userId = user.id;
+      
+      // Remove password before returning user
+      const { password, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      console.error("Facebook auth error:", error);
+      res.status(500).json({ message: "Facebook authentication failed" });
     }
   });
 

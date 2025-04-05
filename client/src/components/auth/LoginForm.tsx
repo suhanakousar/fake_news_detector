@@ -69,20 +69,35 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onForgotPassword }) =>
     }
   };
 
+  const { loginWithGoogle, loginWithFacebook } = useAuth();
+
   const handleSocialLogin = async (provider: 'google' | 'facebook') => {
     setSocialLoading(provider);
     try {
-      // In a real implementation, you would call your backend API to initiate OAuth flow
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // For demonstration purposes, we'll create mock user data
+      // In a real app, this would be data from the OAuth provider
+      const mockUserData = {
+        email: provider === 'google' ? 'user@gmail.com' : 'user@facebook.com',
+        name: 'Demo User',
+        token: 'mock-oauth-token'
+      };
       
-      // Since we don't have real OAuth integration in this demo, show a toast 
-      toast({
-        title: `${provider.charAt(0).toUpperCase() + provider.slice(1)} Login`,
-        description: `${provider.charAt(0).toUpperCase() + provider.slice(1)} login would be initiated here.`,
-        variant: "default",
-      });
+      if (provider === 'google') {
+        await loginWithGoogle(mockUserData.email, mockUserData.name, mockUserData.token);
+      } else {
+        await loginWithFacebook(mockUserData.email, mockUserData.name, mockUserData.token);
+      }
       
-      // For demo purposes, simulate successful login
+      // Add success animation
+      const successAnimation = async () => {
+        return new Promise<void>((resolve) => {
+          setTimeout(() => {
+            resolve();
+          }, 300);
+        });
+      };
+      
+      await successAnimation();
       onSuccess();
     } catch (error) {
       toast({

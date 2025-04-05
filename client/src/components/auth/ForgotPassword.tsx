@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Mail, ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Create schema for password reset
 const resetPasswordSchema = z.object({
@@ -41,22 +42,15 @@ const ForgotPassword: React.FC<ForgotPasswordProps> = ({ onBack }) => {
     },
   });
 
+  const { forgotPassword } = useAuth();
+
   const onSubmit = async (values: ResetPasswordFormValues) => {
     setIsSubmitting(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // In a real implementation, you would call your backend API to send a reset email
-      // await axios.post('/api/auth/forgot-password', { email: values.email });
-      
+      await forgotPassword(values.email);
       setIsSuccess(true);
-      toast({
-        title: "Reset link sent",
-        description: "If an account exists with this email, you'll receive password reset instructions.",
-        variant: "default",
-      });
+      // Toast is displayed by the AuthContext
     } catch (error) {
       toast({
         title: "Something went wrong",
