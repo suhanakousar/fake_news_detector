@@ -119,27 +119,32 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess }) => {
     setShowConfirmPassword(!showConfirmPassword);
   };
   
+  const { loginWithGoogle, loginWithFacebook } = useAuth();
+
   const handleSocialSignup = async (provider: 'google' | 'facebook') => {
     setSocialLoading(provider);
     try {
-      // In a real implementation, you would call your backend API to initiate OAuth flow
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Using real Firebase authentication
+      if (provider === 'google') {
+        await loginWithGoogle();
+      } else {
+        await loginWithFacebook();
+      }
       
-      // Since we don't have real OAuth integration in this demo, show a toast 
-      toast({
-        title: `${provider.charAt(0).toUpperCase() + provider.slice(1)} Sign Up`,
-        description: `${provider.charAt(0).toUpperCase() + provider.slice(1)} sign up would be initiated here.`,
-        variant: "default",
-      });
+      // Add success animation
+      const successAnimation = async () => {
+        return new Promise<void>((resolve) => {
+          setTimeout(() => {
+            resolve();
+          }, 300);
+        });
+      };
       
-      // For demo purposes, simulate successful registration
+      await successAnimation();
       onSuccess();
-    } catch (error) {
-      toast({
-        title: "Registration failed",
-        description: `Could not sign up with ${provider}. Please try again.`,
-        variant: "destructive",
-      });
+    } catch (error: any) {
+      // Don't show error toast here since the auth context will show it
+      console.error(`Sign up with ${provider} failed:`, error);
     } finally {
       setSocialLoading(null);
     }

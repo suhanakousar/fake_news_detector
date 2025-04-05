@@ -74,18 +74,11 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onForgotPassword }) =>
   const handleSocialLogin = async (provider: 'google' | 'facebook') => {
     setSocialLoading(provider);
     try {
-      // For demonstration purposes, we'll create mock user data
-      // In a real app, this would be data from the OAuth provider
-      const mockUserData = {
-        email: provider === 'google' ? 'user@gmail.com' : 'user@facebook.com',
-        name: 'Demo User',
-        token: 'mock-oauth-token'
-      };
-      
+      // Using real Firebase authentication
       if (provider === 'google') {
-        await loginWithGoogle(mockUserData.email, mockUserData.name, mockUserData.token);
+        await loginWithGoogle();
       } else {
-        await loginWithFacebook(mockUserData.email, mockUserData.name, mockUserData.token);
+        await loginWithFacebook();
       }
       
       // Add success animation
@@ -99,12 +92,9 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onForgotPassword }) =>
       
       await successAnimation();
       onSuccess();
-    } catch (error) {
-      toast({
-        title: "Login failed",
-        description: `Could not log in with ${provider}. Please try again.`,
-        variant: "destructive",
-      });
+    } catch (error: any) {
+      // Don't show error toast here since the auth context will show it
+      console.error(`Login with ${provider} failed:`, error);
     } finally {
       setSocialLoading(null);
     }

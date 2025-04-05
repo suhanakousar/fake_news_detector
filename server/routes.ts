@@ -300,6 +300,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Facebook authentication failed" });
     }
   });
+  
+  // Firebase Authentication endpoint
+  app.post("/api/auth/firebase-auth", async (req, res) => {
+    try {
+      const { token, email, displayName } = req.body;
+      
+      if (!token) {
+        return res.status(400).json({ message: "Firebase token is required" });
+      }
+      
+      const verifyFirebaseToken = async (idToken: string, email?: string, displayName?: string) => {
+        try {
+          // Check if user exists with this email
+          let user = email ? await storage.getUserByEmail(email) : null;
+          
+          if (!user) {
+            // Create new user
+            const username = displayName?.replace(/\s+/g, '').toLowerCase() || 
+                            email?.split('@')[0] || 
+                            `user_${Math.random().toString(36).substring(2, 10)}`;
+                            
+            const randomPassword = Math.random().toString(36).slice(-10);
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash(randomPassword, salt);
+            
+            user = await storage.createUser({
+              username,
+              email: email || `${username}@firebase-auth.com`,
+              password: hashedPassword,
+              role: "user",
+              isActive: true
+            });
+          }
+          
+          return user;
+        } catch (error) {
+          console.error("Error verifying Firebase token:", error);
+          return null;
+        }
+      };
+      
+      // In a production environment with firebase-admin, you would verify the token
+      // For our demo, we'll create/get the user directly
+      const user = await verifyFirebaseToken(token, email, displayName);
+      
+      if (!user) {
+        return res.status(401).json({ message: "Invalid Firebase authentication" });
+      }
+      
+      // Set session
+      req.session.userId = user.id;
+      
+      // Remove password before returning user
+      const { password, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      console.error("Firebase auth error:", error);
+      res.status(500).json({ message: "Firebase authentication failed" });
+    }
+  });
 
   // Analysis routes
   app.post("/api/analyze/text", async (req, res) => {

@@ -1,66 +1,93 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { User } from '@shared/schema';
+import { 
+  auth, 
+  loginWithEmailPassword, 
+  registerWithEmailPassword, 
+  loginWithGoogle as firebaseLoginWithGoogle, 
+  loginWithFacebook as firebaseLoginWithFacebook,
+  resetPassword,
+  logoutUser,
+  onAuthChange
+} from '@/lib/firebase';
+import { apiRequest } from '@/lib/queryClient';
+import { User as FirebaseUser } from 'firebase/auth';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   register: (username: string, email: string, password: string) => Promise<void>;
   login: (username: string, password: string) => Promise<void>;
-  loginWithGoogle: (email: string, name: string, token: string) => Promise<void>;
-  loginWithFacebook: (email: string, name: string, token: string) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
+  loginWithFacebook: () => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
+  firebaseUser: FirebaseUser | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check if user is already logged in
-    const checkAuthStatus = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch('/api/auth/me', {
-          credentials: 'include'
-        });
-        
-        if (response.ok) {
-          const userData = await response.json();
-          setUser(userData);
-        }
-      } catch (error) {
-        console.error('Auth check error:', error);
-      } finally {
-        setLoading(false);
+    // Listen for Firebase auth state changes
+    const unsubscribe = onAuthChange((firebaseUserResult) => {
+      setFirebaseUser(firebaseUserResult);
+      setLoading(false);
+      
+      if (firebaseUserResult) {
+        // If Firebase user exists, sync with our backend
+        syncUserWithBackend(firebaseUserResult);
       }
-    };
-
-    checkAuthStatus();
+    });
+    
+    return () => unsubscribe();
   }, []);
+  
+  // Sync Firebase user with our backend
+  const syncUserWithBackend = async (firebaseUser: FirebaseUser) => {
+    try {
+      // Send the Firebase user's ID token to our backend to verify and get/create user data
+      const idToken = await firebaseUser.getIdToken();
+      const response = await apiRequest('POST', '/api/auth/firebase-auth', { 
+        token: idToken,
+        email: firebaseUser.email,
+        displayName: firebaseUser.displayName
+      });
+      
+      if (response.ok) {
+        const userData = await response.json();
+        setUser(userData);
+      }
+    } catch (error) {
+      console.error('Error syncing user with backend:', error);
+    }
+  };
 
   const register = async (username: string, email: string, password: string) => {
     try {
       setLoading(true);
-      const response = await apiRequest('POST', '/api/auth/register', { username, email, password });
-      const userData = await response.json();
-      setUser(userData);
+      
+      // Register with Firebase
+      const firebaseUser = await registerWithEmailPassword(email, password, username);
+      
+      // Backend will be updated via the Firebase auth state change listener
       
       toast({
         title: "Registration successful!",
         description: "Welcome to TruthLens!",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Registration error:', error);
       toast({
         title: "Registration failed",
-        description: error instanceof Error ? error.message : "An error occurred",
+        description: error?.message || "An error occurred during registration",
         variant: "destructive",
       });
       throw error;
@@ -72,19 +99,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (username: string, password: string) => {
     try {
       setLoading(true);
-      const response = await apiRequest('POST', '/api/auth/login', { username, password });
-      const userData = await response.json();
-      setUser(userData);
+      
+      // We use email as username for simplicity in this integration
+      await loginWithEmailPassword(username, password);
+      
+      // Backend will be updated via the Firebase auth state change listener
       
       toast({
         title: "Login successful!",
-        description: `Welcome back, ${userData.username}!`,
+        description: `Welcome back!`,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
       toast({
         title: "Login failed",
-        description: error instanceof Error ? error.message : "Invalid credentials",
+        description: error?.message || "Invalid credentials",
         variant: "destructive",
       });
       throw error;
@@ -93,22 +122,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const loginWithGoogle = async (email: string, name: string, token: string) => {
+  const loginWithGoogle = async () => {
     try {
       setLoading(true);
-      const response = await apiRequest('POST', '/api/auth/social/google', { email, name, token });
-      const userData = await response.json();
-      setUser(userData);
+      
+      // Login with Google through Firebase
+      await firebaseLoginWithGoogle();
+      
+      // Backend will be updated via the Firebase auth state change listener
       
       toast({
         title: "Google login successful!",
-        description: `Welcome, ${userData.username}!`,
+        description: "Welcome to TruthLens!",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Google login error:', error);
       toast({
         title: "Google login failed",
-        description: error instanceof Error ? error.message : "Authentication failed",
+        description: error?.message || "Authentication failed",
         variant: "destructive",
       });
       throw error;
@@ -117,22 +148,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const loginWithFacebook = async (email: string, name: string, token: string) => {
+  const loginWithFacebook = async () => {
     try {
       setLoading(true);
-      const response = await apiRequest('POST', '/api/auth/social/facebook', { email, name, token });
-      const userData = await response.json();
-      setUser(userData);
+      
+      // Login with Facebook through Firebase
+      await firebaseLoginWithFacebook();
+      
+      // Backend will be updated via the Firebase auth state change listener
       
       toast({
         title: "Facebook login successful!",
-        description: `Welcome, ${userData.username}!`,
+        description: "Welcome to TruthLens!",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Facebook login error:', error);
       toast({
         title: "Facebook login failed",
-        description: error instanceof Error ? error.message : "Authentication failed",
+        description: error?.message || "Authentication failed",
         variant: "destructive",
       });
       throw error;
@@ -144,18 +177,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const forgotPassword = async (email: string) => {
     try {
       setLoading(true);
-      const response = await apiRequest('POST', '/api/auth/forgot-password', { email });
-      const data = await response.json();
+      
+      // Send password reset email through Firebase
+      await resetPassword(email);
       
       toast({
         title: "Password reset email sent",
-        description: data.message || "If an account with that email exists, a password reset link has been sent",
+        description: "If an account with that email exists, a password reset link has been sent",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Forgot password error:', error);
       toast({
         title: "Password reset failed",
-        description: error instanceof Error ? error.message : "An error occurred",
+        description: error?.message || "An error occurred",
         variant: "destructive",
       });
       throw error;
@@ -167,8 +201,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     try {
       setLoading(true);
-      await apiRequest('POST', '/api/auth/logout', {});
+      
+      // Logout from Firebase
+      await logoutUser();
+      
+      // Clear local user state
       setUser(null);
+      
+      // Also notify our backend
+      await apiRequest('POST', '/api/auth/logout', {});
       
       toast({
         title: "Logged out",
@@ -196,7 +237,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loginWithFacebook,
       forgotPassword,
       logout,
-      isAuthenticated: !!user 
+      isAuthenticated: !!user,
+      firebaseUser
     }}>
       {children}
     </AuthContext.Provider>
