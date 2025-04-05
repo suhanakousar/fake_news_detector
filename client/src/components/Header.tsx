@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import AuthModal from './auth/AuthModal';
 import { Button } from './ui/button';
 import {
@@ -12,11 +13,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu, Sun, Moon, User, LogOut } from 'lucide-react';
+import { Menu, Sun, Moon, User, LogOut, Globe } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const Header: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
   const { user, logout, isAuthenticated } = useAuth();
+  const { language, setLanguage } = useLanguage();
   const [, setLocation] = useLocation();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
@@ -67,6 +70,31 @@ const Header: React.FC = () => {
 
         {/* Right actions */}
         <div className="flex items-center space-x-4">
+          {/* Language selector */}
+          <div className="hidden md:flex items-center">
+            <Select 
+              value={language} 
+              onValueChange={setLanguage}
+            >
+              <SelectTrigger className="w-[70px] h-9 mr-1">
+                <SelectValue placeholder="Lang" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="en">English</SelectItem>
+                <SelectItem value="es">Español</SelectItem>
+                <SelectItem value="fr">Français</SelectItem>
+                <SelectItem value="de">Deutsch</SelectItem>
+                <SelectItem value="it">Italiano</SelectItem>
+                <SelectItem value="pt">Português</SelectItem>
+                <SelectItem value="zh">中文</SelectItem>
+                <SelectItem value="hi">हिन्दी</SelectItem>
+                <SelectItem value="bn">বাংলা</SelectItem>
+                <SelectItem value="ta">தமிழ்</SelectItem>
+                <SelectItem value="te">తెలుగు</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
           {/* Dark mode toggle */}
           <Button 
             variant="ghost" 
@@ -143,6 +171,33 @@ const Header: React.FC = () => {
                 <Link href="/about">
                   <a className="text-lg font-medium hover:text-primary transition-colors py-2">About</a>
                 </Link>
+                
+                {/* Mobile language selector */}
+                <div className="py-2">
+                  <p className="text-sm text-gray-500 mb-2">Language</p>
+                  <Select 
+                    value={language} 
+                    onValueChange={setLanguage}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select language" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="en">English</SelectItem>
+                      <SelectItem value="es">Español</SelectItem>
+                      <SelectItem value="fr">Français</SelectItem>
+                      <SelectItem value="de">Deutsch</SelectItem>
+                      <SelectItem value="it">Italiano</SelectItem>
+                      <SelectItem value="pt">Português</SelectItem>
+                      <SelectItem value="zh">中文</SelectItem>
+                      <SelectItem value="hi">हिन्दी</SelectItem>
+                      <SelectItem value="bn">বাংলা</SelectItem>
+                      <SelectItem value="ta">தமிழ்</SelectItem>
+                      <SelectItem value="te">తెలుగు</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
                 {!isAuthenticated ? (
                   <>
                     <Button 
