@@ -66,6 +66,9 @@ const Header: React.FC = () => {
           <Link href="/about">
             <span className="text-sm font-medium hover:text-primary transition-colors cursor-pointer">About</span>
           </Link>
+          <Link href="/contact">
+            <span className="text-sm font-medium hover:text-primary transition-colors cursor-pointer">Contact</span>
+          </Link>
         </nav>
 
         {/* Right actions */}
@@ -118,6 +121,11 @@ const Header: React.FC = () => {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem asChild>
+                  <Link href="/profile">
+                    <span className="w-full cursor-pointer">My Profile</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
                   <Link href="/dashboard">
                     <span className="w-full cursor-pointer">Dashboard</span>
                   </Link>
@@ -164,12 +172,23 @@ const Header: React.FC = () => {
                   <span className="text-lg font-medium hover:text-primary transition-colors py-2 block cursor-pointer">Home</span>
                 </Link>
                 {isAuthenticated && (
-                  <Link href="/history">
-                    <span className="text-lg font-medium hover:text-primary transition-colors py-2 block cursor-pointer">History</span>
-                  </Link>
+                  <>
+                    <Link href="/profile">
+                      <span className="text-lg font-medium hover:text-primary transition-colors py-2 block cursor-pointer">My Profile</span>
+                    </Link>
+                    <Link href="/history">
+                      <span className="text-lg font-medium hover:text-primary transition-colors py-2 block cursor-pointer">History</span>
+                    </Link>
+                    <Link href="/dashboard">
+                      <span className="text-lg font-medium hover:text-primary transition-colors py-2 block cursor-pointer">Dashboard</span>
+                    </Link>
+                  </>
                 )}
                 <Link href="/about">
                   <span className="text-lg font-medium hover:text-primary transition-colors py-2 block cursor-pointer">About</span>
+                </Link>
+                <Link href="/contact">
+                  <span className="text-lg font-medium hover:text-primary transition-colors py-2 block cursor-pointer">Contact</span>
                 </Link>
                 
                 {/* Mobile language selector */}

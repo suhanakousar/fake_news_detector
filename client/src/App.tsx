@@ -12,6 +12,8 @@ import Dashboard from "@/pages/Dashboard";
 import History from "@/pages/History";
 import About from "@/pages/About";
 import Admin from "@/pages/Admin";
+import Profile from "@/pages/Profile";
+import Contact from "@/pages/Contact";
 
 function Router() {
   return (
@@ -21,6 +23,8 @@ function Router() {
       <Route path="/history" component={History} />
       <Route path="/about" component={About} />
       <Route path="/admin" component={Admin} />
+      <Route path="/profile" component={Profile} />
+      <Route path="/contact" component={Contact} />
       <Route component={NotFound} />
     </Switch>
   );

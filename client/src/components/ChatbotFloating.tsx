@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { 
   MessageSquare, X, Send, Mic, MinusSquare, 
-  ChevronUp, Loader2, AlertCircle
+  ChevronUp, Loader2, AlertCircle, PaperclipIcon, FileText
 } from 'lucide-react';
 import { AnalysisResult } from '@shared/schema';
 import { useMutation } from '@tanstack/react-query';
@@ -164,14 +164,57 @@ const ChatbotFloating: React.FC<ChatbotFloatingProps> = ({
     }, 1500);
   };
   
+  // File upload handling
+  const handleFileUpload = () => {
+    // This would normally handle file selection
+    const mockUploadedText = "Breaking news: Scientists discover new renewable energy source with 90% efficiency. Critics say the technology is still unproven. The team at Stanford University claims their new device can convert solar energy at unprecedented rates, but industry experts point out the lack of peer review and real-world testing conditions. The research funded by private investors has yet to be replicated by independent labs.";
+    
+    // Add a user message showing the uploaded content
+    setChatMessages(prev => [
+      ...prev,
+      {
+        text: "I've uploaded a news article for analysis:",
+        isUser: true,
+        timestamp: new Date()
+      },
+      {
+        text: mockUploadedText,
+        isUser: true,
+        timestamp: new Date()
+      }
+    ]);
+    
+    // Show an automatic article summary
+    setTimeout(() => {
+      setChatMessages(prev => [
+        ...prev,
+        {
+          text: "**Article Summary**\n\nResearchers claim to have developed a highly efficient renewable energy technology, but the article lacks verification from independent sources and peer-reviewed evidence. The claimed 90% efficiency would be groundbreaking if true, but experts express skepticism due to missing details about testing conditions.",
+          isUser: false,
+          timestamp: new Date()
+        }
+      ]);
+      
+      // Then ask for analysis
+      setTimeout(() => {
+        chatbotMutation.mutate("Can you analyze this article for potential misinformation?");
+      }, 800);
+    }, 1000);
+  };
+  
   // Suggestions based on analysis result
   const getSuggestions = () => {
-    if (!analysisResult) return [];
+    if (!analysisResult) return [
+      "Can you help me check if an article is reliable?",
+      "How do I spot fake news?",
+      "What are signs of disinformation?"
+    ];
     
     return [
       `Why is this considered ${analysisResult.classification}?`,
       "Can you debunk the main claims?",
-      "What are reliable sources on this topic?"
+      "What are reliable sources on this topic?",
+      "How can I verify this information?"
     ];
   };
   
@@ -214,7 +257,7 @@ const ChatbotFloating: React.FC<ChatbotFloatingProps> = ({
           >
             {/* Chat Header */}
             <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-primary/10">
-              <div className="flex items-center" onClick={maximizeChat}>
+              <div className="flex items-center cursor-pointer" onClick={maximizeChat}>
                 <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center mr-2">
                   <MessageSquare className="h-4 w-4 text-white" />
                 </div>
@@ -222,6 +265,7 @@ const ChatbotFloating: React.FC<ChatbotFloatingProps> = ({
                   <h3 className="text-sm font-medium flex items-center">
                     TruthLens AI
                     <span className="ml-2 inline-block w-2 h-2 bg-green-500 rounded-full"></span>
+                    <span className="ml-1 text-xs text-green-500 font-normal">Online</span>
                   </h3>
                   {isMinimized && (
                     <p className="text-xs text-gray-500 dark:text-gray-400">Click to expand</p>
@@ -265,13 +309,72 @@ const ChatbotFloating: React.FC<ChatbotFloatingProps> = ({
                         transition={{ duration: 0.2 }}
                       >
                         <div 
-                          className={`max-w-[80%] p-3 rounded-2xl ${
+                          className={`max-w-[80%] p-3 rounded-lg shadow-sm ${
                             message.isUser 
-                              ? 'bg-primary text-white' 
-                              : 'bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700'
+                              ? 'bg-primary text-white rounded-br-none' 
+                              : 'bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-bl-none'
                           }`}
                         >
-                          <p className="text-sm whitespace-pre-wrap">{message.text}</p>
+                          {/* Message Content */}
+                          <p className="text-sm whitespace-pre-wrap leading-relaxed">
+                            {/* Simple markdown-style formatting */}
+                            {message.text.split('\n').map((line, i) => {
+                              // Bold text (**text**)
+                              const boldText = line.replace(
+                                /\*\*(.*?)\*\*/g, 
+                                '<strong>$1</strong>'
+                              );
+                              
+                              // Italic text (*text*)
+                              const formattedText = boldText.replace(
+                                /\*(.*?)\*/g, 
+                                '<em>$1</em>'
+                              );
+                              
+                              return (
+                                <span 
+                                  key={i} 
+                                  className="block" 
+                                  dangerouslySetInnerHTML={{ __html: formattedText }}
+                                />
+                              );
+                            })}
+                          </p>
+                          
+                          {/* Sources section - shown only for AI messages with sources */}
+                          {!message.isUser && index > 0 && index % 2 === 0 && (
+                            <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                              <details className="text-xs">
+                                <summary className="cursor-pointer text-gray-500 dark:text-gray-400 font-medium">
+                                  Sources
+                                </summary>
+                                <ul className="mt-1 pl-3 space-y-1 list-disc">
+                                  <li className="text-blue-600 dark:text-blue-400">
+                                    <a 
+                                      href="https://www.factcheck.org/" 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="hover:underline"
+                                    >
+                                      FactCheck.org
+                                    </a>
+                                  </li>
+                                  <li className="text-blue-600 dark:text-blue-400">
+                                    <a 
+                                      href="https://www.politifact.com/" 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="hover:underline"
+                                    >
+                                      PolitiFact
+                                    </a>
+                                  </li>
+                                </ul>
+                              </details>
+                            </div>
+                          )}
+                          
+                          {/* Timestamp */}
                           <span className="text-xs opacity-60 mt-1 block text-right">
                             {message.timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                           </span>
@@ -280,14 +383,22 @@ const ChatbotFloating: React.FC<ChatbotFloatingProps> = ({
                     ))}
                     
                     {chatbotMutation.isPending && (
-                      <div className="flex justify-start">
-                        <div className="bg-gray-100 dark:bg-gray-800 p-3 rounded-2xl border border-gray-200 dark:border-gray-700 max-w-[80%]">
-                          <div className="flex items-center space-x-2">
-                            <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                            <span className="text-sm text-gray-500 dark:text-gray-400">Thinking...</span>
+                      <motion.div 
+                        className="flex justify-start"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 max-w-[80%] rounded-bl-none">
+                          <div className="flex items-center space-x-3">
+                            <span className="text-sm text-gray-500 dark:text-gray-400 flex">
+                              <span className="w-1.5 h-1.5 bg-primary rounded-full mr-1 animate-pulse"></span>
+                              <span className="w-1.5 h-1.5 bg-primary rounded-full mr-1 animate-pulse delay-75"></span>
+                              <span className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse delay-150"></span>
+                            </span>
                           </div>
                         </div>
-                      </div>
+                      </motion.div>
                     )}
                     
                     {/* Empty div for scrolling to bottom */}
@@ -315,6 +426,20 @@ const ChatbotFloating: React.FC<ChatbotFloatingProps> = ({
                 
                 {/* Input Area */}
                 <div className="p-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                  {/* Action buttons bar */}
+                  <div className="flex mb-2 gap-1 justify-end">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs flex items-center gap-1 rounded-full px-2 text-gray-600 hover:text-primary dark:text-gray-400 dark:hover:text-gray-200"
+                      onClick={handleFileUpload}
+                      disabled={chatbotMutation.isPending}
+                    >
+                      <PaperclipIcon className="h-3 w-3" />
+                      <span>Upload article</span>
+                    </Button>
+                  </div>
+                  
                   <form onSubmit={handleChatSubmit} className="relative">
                     <input 
                       ref={inputRef}
@@ -347,6 +472,13 @@ const ChatbotFloating: React.FC<ChatbotFloatingProps> = ({
                       <Send className="h-4 w-4" />
                     </button>
                   </form>
+                  
+                  {/* Powered by message */}
+                  <div className="mt-2 text-center">
+                    <p className="text-[10px] text-gray-400">
+                      Powered by Perplexity AI Technology
+                    </p>
+                  </div>
                 </div>
               </>
             )}
