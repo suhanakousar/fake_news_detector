@@ -231,7 +231,7 @@ Respond in valid JSON format only:
           result: maxProbClass.label,
           confidence: maxProbClass.score
         };
-      }).filter((insight): insight is ClassificationInsight => Boolean(insight)) : [];
+      }).filter((insight): boolean => Boolean(insight)) as ClassificationInsight[] : [];
     
     // Use classification insights to create detection confidence if none were generated
     if (detectionConfidence.length === 0 && classificationInsights.length > 0) {

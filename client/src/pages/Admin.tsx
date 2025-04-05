@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { User, Analysis, Feedback } from '@shared/schema';
+import { User, Analysis, Feedback, AnalysisResult } from '@shared/schema';
 import {
   Tabs,
   TabsList,
@@ -22,12 +22,17 @@ import {
 } from "@/components/ui/table";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Flag, AlertTriangle, CheckCircle, XCircle, Eye } from "lucide-react";
+import { Loader2, Flag, AlertTriangle, CheckCircle, XCircle, Eye, Plus, FileText, Download, Upload, Trash2 } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 import { getClassificationColor, getCredibilityLevelColor } from '@/lib/analysis';
 import { queryClient } from '@/lib/queryClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { Redirect } from 'wouter';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function AdminDashboard() {
   const { user, isAuthenticated, loading } = useAuth();
@@ -74,11 +79,12 @@ export default function AdminDashboard() {
         </div>
         
         <Tabs defaultValue="users" value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid grid-cols-4 mb-8">
+          <TabsList className="grid grid-cols-5 mb-8">
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="analyses">All Analyses</TabsTrigger>
             <TabsTrigger value="flagged">Flagged Content</TabsTrigger>
             <TabsTrigger value="feedback">User Feedback</TabsTrigger>
+            <TabsTrigger value="dataset">Dataset Management</TabsTrigger>
           </TabsList>
           
           <TabsContent value="users" className="space-y-4">
@@ -95,6 +101,10 @@ export default function AdminDashboard() {
           
           <TabsContent value="feedback" className="space-y-4">
             <FeedbackList />
+          </TabsContent>
+          
+          <TabsContent value="dataset" className="space-y-4">
+            <DatasetManagement />
           </TabsContent>
         </Tabs>
       </div>
@@ -245,11 +255,11 @@ function AnalysesList() {
                     </TableCell>
                     <TableCell title={analysis.content}>{contentPreview}</TableCell>
                     <TableCell>
-                      <Badge style={{ backgroundColor: getClassificationColor(analysis.result.classification) }}>
-                        {analysis.result.classification}
+                      <Badge style={{ backgroundColor: getClassificationColor((analysis.result as AnalysisResult).classification) }}>
+                        {(analysis.result as AnalysisResult).classification}
                       </Badge>
                     </TableCell>
-                    <TableCell>{(analysis.result.confidence * 100).toFixed(0)}%</TableCell>
+                    <TableCell>{((analysis.result as AnalysisResult).confidence * 100).toFixed(0)}%</TableCell>
                     <TableCell>{formatDate(analysis.createdAt)}</TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
@@ -369,8 +379,8 @@ function FlaggedContentList() {
                     </TableCell>
                     <TableCell title={analysis.content}>{contentPreview}</TableCell>
                     <TableCell>
-                      <Badge style={{ backgroundColor: getClassificationColor(analysis.result.classification) }}>
-                        {analysis.result.classification}
+                      <Badge style={{ backgroundColor: getClassificationColor((analysis.result as AnalysisResult).classification) }}>
+                        {(analysis.result as AnalysisResult).classification}
                       </Badge>
                     </TableCell>
                     <TableCell>{formatDate(analysis.createdAt)}</TableCell>
@@ -489,6 +499,257 @@ function EmptyState({ message }: { message: string }) {
         <p className="text-sm text-muted-foreground">{message}</p>
       </div>
     </div>
+  );
+}
+
+// Dataset Management component
+interface DatasetItem {
+  id: number;
+  text: string;
+  label: 'real' | 'fake' | 'misleading';
+  source?: string;
+  createdAt: string;
+  addedBy: string;
+}
+
+function DatasetManagement() {
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [datasetItems, setDatasetItems] = useState<DatasetItem[]>([
+    {
+      id: 1,
+      text: "Scientists discover new COVID-19 variant that is more transmissible but less severe.",
+      label: "real",
+      source: "medical-journal.org",
+      createdAt: new Date().toISOString(),
+      addedBy: "admin"
+    },
+    {
+      id: 2,
+      text: "Breaking: 5G towers shown to cause coronavirus according to new research.",
+      label: "fake",
+      source: "conspiracy-news.com",
+      createdAt: new Date().toISOString(),
+      addedBy: "admin"
+    },
+    {
+      id: 3,
+      text: "Study suggests moderate coffee consumption may have health benefits, but more research needed.",
+      label: "misleading",
+      source: "health-blog.com",
+      createdAt: new Date().toISOString(),
+      addedBy: "admin"
+    }
+  ]);
+  
+  const { toast } = useToast();
+  
+  const handleAddDatasetItem = (item: Omit<DatasetItem, 'id' | 'createdAt' | 'addedBy'>) => {
+    const newItem: DatasetItem = {
+      ...item,
+      id: Math.max(0, ...datasetItems.map(item => item.id)) + 1,
+      createdAt: new Date().toISOString(),
+      addedBy: "admin"
+    };
+    
+    setDatasetItems([...datasetItems, newItem]);
+    setIsAddDialogOpen(false);
+    
+    toast({
+      title: "Dataset updated",
+      description: "New sample added to the dataset successfully.",
+    });
+  };
+  
+  const handleRemoveItem = (id: number) => {
+    setDatasetItems(datasetItems.filter(item => item.id !== id));
+    
+    toast({
+      title: "Sample removed",
+      description: "The sample was removed from the dataset.",
+    });
+  };
+  
+  const handleExportDataset = () => {
+    // Create a CSV string
+    const headers = "id,text,label,source,createdAt,addedBy\n";
+    const rows = datasetItems.map(item => 
+      `${item.id},"${item.text.replace(/"/g, '""')}",${item.label},"${item.source || ''}","${item.createdAt}","${item.addedBy}"`
+    ).join("\n");
+    
+    const csvContent = `data:text/csv;charset=utf-8,${headers}${rows}`;
+    const encodedUri = encodeURI(csvContent);
+    
+    // Create a link and trigger download
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `truthlens-dataset-${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast({
+      title: "Dataset exported",
+      description: "The dataset has been exported as a CSV file.",
+    });
+  };
+  
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Training Dataset</CardTitle>
+            <CardDescription>
+              Manage the samples used to train the fake news detection model
+            </CardDescription>
+          </div>
+          <div className="flex space-x-2">
+            <Button variant="outline" onClick={handleExportDataset}>
+              <Download className="h-4 w-4 mr-2" />
+              Export CSV
+            </Button>
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Sample
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add New Dataset Sample</DialogTitle>
+                  <DialogDescription>
+                    Add a new sample to the training dataset. This will be used to improve the model.
+                  </DialogDescription>
+                </DialogHeader>
+                <AddDatasetItemForm onSubmit={handleAddDatasetItem} onCancel={() => setIsAddDialogOpen(false)} />
+              </DialogContent>
+            </Dialog>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <ScrollArea className="h-[500px]">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>ID</TableHead>
+                  <TableHead>Text Sample</TableHead>
+                  <TableHead>Label</TableHead>
+                  <TableHead>Source</TableHead>
+                  <TableHead>Added By</TableHead>
+                  <TableHead>Created At</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {datasetItems.map((item) => {
+                  const textPreview = item.text.length > 50
+                    ? `${item.text.substring(0, 50)}...`
+                    : item.text;
+                  
+                  return (
+                    <TableRow key={item.id}>
+                      <TableCell>{item.id}</TableCell>
+                      <TableCell title={item.text}>{textPreview}</TableCell>
+                      <TableCell>
+                        <Badge style={{ backgroundColor: getClassificationColor(item.label) }}>
+                          {item.label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{item.source || "N/A"}</TableCell>
+                      <TableCell>{item.addedBy}</TableCell>
+                      <TableCell>{formatDate(item.createdAt)}</TableCell>
+                      <TableCell>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => handleRemoveItem(item.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </ScrollArea>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// Add Dataset Item Form
+interface AddDatasetItemFormProps {
+  onSubmit: (item: Omit<DatasetItem, 'id' | 'createdAt' | 'addedBy'>) => void;
+  onCancel: () => void;
+}
+
+function AddDatasetItemForm({ onSubmit, onCancel }: AddDatasetItemFormProps) {
+  const [text, setText] = useState("");
+  const [label, setLabel] = useState<'real' | 'fake' | 'misleading'>('real');
+  const [source, setSource] = useState("");
+  
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!text) return;
+    
+    onSubmit({
+      text,
+      label,
+      source: source.trim() || undefined
+    });
+    
+    // Reset form
+    setText("");
+    setLabel('real');
+    setSource("");
+  };
+  
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="text">Text Content</Label>
+        <Textarea 
+          id="text" 
+          value={text} 
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Enter the text content of the news sample" 
+          required
+          className="min-h-[100px]"
+        />
+      </div>
+      
+      <div className="space-y-2">
+        <Label htmlFor="label">Classification Label</Label>
+        <Select value={label} onValueChange={(value) => setLabel(value as 'real' | 'fake' | 'misleading')}>
+          <SelectTrigger id="label">
+            <SelectValue placeholder="Select a label" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="real">Real</SelectItem>
+            <SelectItem value="fake">Fake</SelectItem>
+            <SelectItem value="misleading">Misleading</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      
+      <div className="space-y-2">
+        <Label htmlFor="source">Source URL (optional)</Label>
+        <Input 
+          id="source" 
+          value={source} 
+          onChange={(e) => setSource(e.target.value)}
+          placeholder="e.g., https://example.com/article" 
+        />
+      </div>
+      
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
+        <Button type="submit">Add Sample</Button>
+      </DialogFooter>
+    </form>
   );
 }
 

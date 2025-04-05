@@ -9,13 +9,15 @@ import {
 import { 
   AlertCircle, Download, Share, Search, Lightbulb,
   ChevronDown, ExternalLink, FileText, Microscope, 
-  Code, Link as LinkIcon, MessageSquare
+  Code, Link as LinkIcon, MessageSquare, SendIcon, Loader2
 } from 'lucide-react';
 import { AnalysisResult } from '@shared/schema';
 import { 
   getClassificationColor, getClassificationBgColor, 
   getScoreColor, getCredibilityLevelColor, getSentimentColor 
 } from '@/lib/analysis';
+import { useMutation } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 
 interface ResultsDisplayProps {
   result: AnalysisResult;
@@ -23,8 +25,82 @@ interface ResultsDisplayProps {
   onReset: () => void;
 }
 
+interface ChatMessage {
+  text: string;
+  isUser: boolean;
+  timestamp: Date;
+}
+
 const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result, contentPreview, onReset }) => {
   const [isDownloading, setIsDownloading] = useState(false);
+  const [chatInput, setChatInput] = useState('');
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  
+  // Create the chatbot mutation
+  const chatbotMutation = useMutation({
+    mutationFn: async (question: string) => {
+      const response = await apiRequest('POST', '/api/chatbot', {
+        question,
+        content: contentPreview,
+        analysisResult: result
+      });
+      return await response.json();
+    },
+    onSuccess: (data) => {
+      // Add bot response to messages
+      setChatMessages(prev => [
+        ...prev,
+        {
+          text: data.response,
+          isUser: false,
+          timestamp: new Date()
+        }
+      ]);
+    },
+    onError: (error) => {
+      // Handle error
+      setChatMessages(prev => [
+        ...prev,
+        {
+          text: "Sorry, I couldn't process your question. Please try again.",
+          isUser: false,
+          timestamp: new Date()
+        }
+      ]);
+    }
+  });
+
+  const handleChatSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!chatInput.trim()) return;
+    
+    // Add user message to chat
+    const userMessage: ChatMessage = {
+      text: chatInput,
+      isUser: true,
+      timestamp: new Date()
+    };
+    
+    setChatMessages(prev => [...prev, userMessage]);
+    
+    // Send question to API
+    chatbotMutation.mutate(chatInput);
+    
+    // Clear input
+    setChatInput('');
+  };
+  
+  const handleSuggestionClick = (suggestion: string) => {
+    setChatInput(suggestion);
+    
+    // Focus the input after setting the value
+    const inputElement = document.getElementById('chat-input');
+    if (inputElement) {
+      inputElement.focus();
+    }
+  };
 
   const handleDownload = () => {
     setIsDownloading(true);
@@ -502,8 +578,12 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result, contentPreview,
                   </Collapsible>
                 )}
 
-                {/* AI Debunker Chatbot (NEW) */}
-                <Collapsible className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                {/* AI Debunker Chatbot */}
+                <Collapsible 
+                  open={isChatOpen}
+                  onOpenChange={setIsChatOpen}
+                  className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
+                >
                   <div className="bg-white dark:bg-gray-800 px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
                     <div className="flex items-center">
                       <MessageSquare className="h-4 w-4 mr-2 text-primary" />
@@ -518,33 +598,90 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result, contentPreview,
                   <CollapsibleContent>
                     <div className="p-4 bg-white dark:bg-gray-800">
                       <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-                        <div className="mb-3">
-                          <p className="text-sm mb-2">Ask our AI assistant questions about this content:</p>
-                          <ul className="space-y-1 text-xs text-gray-600 dark:text-gray-300">
-                            <li className="flex items-center">
-                              <span className="inline-block w-1 h-1 bg-primary rounded-full mr-1.5"></span>
-                              "Why is this considered {result.classification}?"
-                            </li>
-                            <li className="flex items-center">
-                              <span className="inline-block w-1 h-1 bg-primary rounded-full mr-1.5"></span>
-                              "Can you debunk the main claims?"
-                            </li>
-                            <li className="flex items-center">
-                              <span className="inline-block w-1 h-1 bg-primary rounded-full mr-1.5"></span>
-                              "What are reliable sources on this topic?"
-                            </li>
-                          </ul>
-                        </div>
-                        <div className="relative">
+                        {chatMessages.length === 0 ? (
+                          <div className="mb-3">
+                            <p className="text-sm mb-2">Ask our AI assistant questions about this content:</p>
+                            <ul className="space-y-1 text-xs text-gray-600 dark:text-gray-300">
+                              <li 
+                                className="flex items-center cursor-pointer hover:text-primary transition-colors" 
+                                onClick={() => handleSuggestionClick(`Why is this considered ${result.classification}?`)}
+                              >
+                                <span className="inline-block w-1 h-1 bg-primary rounded-full mr-1.5"></span>
+                                Why is this considered {result.classification}?
+                              </li>
+                              <li 
+                                className="flex items-center cursor-pointer hover:text-primary transition-colors"
+                                onClick={() => handleSuggestionClick("Can you debunk the main claims?")}
+                              >
+                                <span className="inline-block w-1 h-1 bg-primary rounded-full mr-1.5"></span>
+                                Can you debunk the main claims?
+                              </li>
+                              <li 
+                                className="flex items-center cursor-pointer hover:text-primary transition-colors"
+                                onClick={() => handleSuggestionClick("What are reliable sources on this topic?")}
+                              >
+                                <span className="inline-block w-1 h-1 bg-primary rounded-full mr-1.5"></span>
+                                What are reliable sources on this topic?
+                              </li>
+                            </ul>
+                          </div>
+                        ) : (
+                          <div className="mb-3 max-h-60 overflow-y-auto space-y-3">
+                            {chatMessages.map((message, index) => (
+                              <div 
+                                key={index} 
+                                className={`p-2 rounded-lg ${
+                                  message.isUser 
+                                    ? 'bg-primary/10 ml-6' 
+                                    : 'bg-gray-100 dark:bg-gray-800 mr-6 border border-gray-200 dark:border-gray-700'
+                                }`}
+                              >
+                                <div className="flex items-start">
+                                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs mr-2 ${
+                                    message.isUser 
+                                      ? 'bg-primary text-white' 
+                                      : 'bg-gray-200 dark:bg-gray-700'
+                                  }`}>
+                                    {message.isUser ? 'U' : 'AI'}
+                                  </div>
+                                  <div className="text-sm flex-1">
+                                    {message.text}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                            {chatbotMutation.isPending && (
+                              <div className="flex items-center justify-center p-2">
+                                <Loader2 className="h-4 w-4 animate-spin text-primary mr-2" />
+                                <span className="text-xs text-gray-500">AI is thinking...</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        
+                        <form onSubmit={handleChatSubmit} className="relative">
                           <input 
+                            id="chat-input"
                             type="text" 
+                            value={chatInput}
+                            onChange={(e) => setChatInput(e.target.value)}
                             placeholder="Ask a question..." 
                             className="w-full py-2 px-3 rounded-md border border-gray-300 dark:border-gray-600 text-sm bg-white dark:bg-gray-800 focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                            disabled={chatbotMutation.isPending}
                           />
-                          <Button size="sm" className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7">
-                            Ask
+                          <Button 
+                            type="submit"
+                            size="sm" 
+                            className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7"
+                            disabled={chatbotMutation.isPending || !chatInput.trim()}
+                          >
+                            {chatbotMutation.isPending ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <SendIcon className="h-3 w-3" />
+                            )}
                           </Button>
-                        </div>
+                        </form>
                         <p className="text-xs text-gray-500 mt-2">This feature is in beta. Responses are generated by AI and may not always be accurate.</p>
                       </div>
                     </div>

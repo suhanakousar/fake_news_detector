@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { AnalysisResult } from '@shared/schema';
 
 // Hugging Face API configuration
 const HUGGINGFACE_API_KEY = process.env.HUGGINGFACE_API_KEY;
@@ -41,9 +42,12 @@ async function queryHuggingFaceAPI(payload: any) {
 export async function generateChatbotResponse(
   question: string,
   contentContext: string,
-  analysisClassification: string,
-  reasoningPoints: string[]
+  analysisResult: AnalysisResult
 ): Promise<string> {
+  // Extract classification and reasoning from analysisResult
+  const analysisClassification = analysisResult.classification;
+  const reasoningPoints = analysisResult.reasoning;
+  
   if (!HUGGINGFACE_API_KEY) {
     return "Sorry, the AI assistant is currently unavailable. Please try again later.";
   }

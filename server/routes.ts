@@ -470,7 +470,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // AI Debunker Chatbot
   app.post("/api/chatbot", async (req, res) => {
     try {
-      const { question, content, classification, reasoning } = req.body;
+      const { question, content, analysisResult } = req.body;
       
       if (!question || typeof question !== 'string' || question.trim() === '') {
         return res.status(400).json({ message: "Question is required" });
@@ -480,15 +480,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Content context is required" });
       }
       
-      if (!classification || !reasoning || !Array.isArray(reasoning)) {
-        return res.status(400).json({ message: "Classification and reasoning are required" });
+      if (!analysisResult || !analysisResult.classification || !analysisResult.reasoning || !Array.isArray(analysisResult.reasoning)) {
+        return res.status(400).json({ message: "Analysis result with classification and reasoning is required" });
       }
       
       const response = await generateChatbotResponse(
         question,
         content,
-        classification,
-        reasoning
+        analysisResult
       );
       
       res.json({ response });
