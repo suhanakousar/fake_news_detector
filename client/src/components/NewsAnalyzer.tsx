@@ -15,6 +15,7 @@ import {
 import ResultsDisplay from './ResultsDisplay';
 import { analyzeContent } from '@/lib/analysis';
 import { AnalysisResult } from '@shared/schema';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 // Add Speech Recognition types
 declare global {
@@ -32,9 +33,9 @@ const NewsAnalyzer: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [showResults, setShowResults] = useState(false);
-  const [selectedLanguage, setSelectedLanguage] = useState('en');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { language, setLanguage } = useLanguage();
   
   // Voice recording states
   const [isRecording, setIsRecording] = useState(false);
@@ -52,7 +53,33 @@ const NewsAnalyzer: React.FC = () => {
         
         recognition.continuous = true;
         recognition.interimResults = true;
-        recognition.lang = 'en-US';
+        
+        // Map selected language to speech recognition language code
+        const langMap: Record<string, string> = {
+          en: 'en-US',
+          es: 'es-ES',
+          fr: 'fr-FR',
+          de: 'de-DE',
+          it: 'it-IT',
+          pt: 'pt-BR',
+          ru: 'ru-RU',
+          zh: 'zh-CN',
+          ja: 'ja-JP',
+          ko: 'ko-KR',
+          ar: 'ar-SA',
+          hi: 'hi-IN',
+          bn: 'bn-IN',
+          ta: 'ta-IN',
+          te: 'te-IN',
+          mr: 'mr-IN',
+          gu: 'gu-IN',
+          kn: 'kn-IN',
+          ml: 'ml-IN',
+          pa: 'pa-IN',
+          ur: 'ur-IN'
+        };
+        
+        recognition.lang = langMap[language] || 'en-US';
         
         recognition.onresult = (event: any) => {
           let interimTranscript = '';
@@ -98,7 +125,7 @@ const NewsAnalyzer: React.FC = () => {
         stopRecording();
       }
     };
-  }, [activeTab]);
+  }, [activeTab, language]);
   
   const startRecording = () => {
     if (speechRecognition) {
@@ -186,7 +213,7 @@ const NewsAnalyzer: React.FC = () => {
             setIsAnalyzing(false);
             return;
           }
-          request = { text: textInput, language: selectedLanguage };
+          request = { text: textInput, language: language };
           break;
         
         case 'url':
@@ -199,7 +226,7 @@ const NewsAnalyzer: React.FC = () => {
             setIsAnalyzing(false);
             return;
           }
-          request = { url: urlInput, language: selectedLanguage };
+          request = { url: urlInput, language: language };
           break;
         
         case 'document':
@@ -213,7 +240,7 @@ const NewsAnalyzer: React.FC = () => {
             setIsAnalyzing(false);
             return;
           }
-          request = { file: selectedFile, language: selectedLanguage };
+          request = { file: selectedFile, language: language };
           break;
         
         case 'voice':
@@ -231,7 +258,7 @@ const NewsAnalyzer: React.FC = () => {
             stopRecording();
           }
           
-          request = { text: voiceInput, language: selectedLanguage };
+          request = { text: voiceInput, language: language };
       }
       
       // Analyze content
@@ -594,8 +621,8 @@ const NewsAnalyzer: React.FC = () => {
               <div className="flex items-center space-x-2">
                 <Globe className="h-4 w-4 text-gray-500" />
                 <Select 
-                  value={selectedLanguage} 
-                  onValueChange={setSelectedLanguage}
+                  value={language} 
+                  onValueChange={setLanguage}
                 >
                   <SelectTrigger className="w-[180px] h-9">
                     <SelectValue placeholder="Select language" />
@@ -612,7 +639,18 @@ const NewsAnalyzer: React.FC = () => {
                     <SelectItem value="ja">Japanese (日本語)</SelectItem>
                     <SelectItem value="ko">Korean (한국어)</SelectItem>
                     <SelectItem value="ar">Arabic (العربية)</SelectItem>
+                    
+                    {/* Indian Languages */}
                     <SelectItem value="hi">Hindi (हिन्दी)</SelectItem>
+                    <SelectItem value="bn">Bengali (বাংলা)</SelectItem>
+                    <SelectItem value="ta">Tamil (தமிழ்)</SelectItem>
+                    <SelectItem value="te">Telugu (తెలుగు)</SelectItem>
+                    <SelectItem value="mr">Marathi (मराठी)</SelectItem>
+                    <SelectItem value="gu">Gujarati (ગુજરાતી)</SelectItem>
+                    <SelectItem value="kn">Kannada (ಕನ್ನಡ)</SelectItem>
+                    <SelectItem value="ml">Malayalam (മലയാളം)</SelectItem>
+                    <SelectItem value="pa">Punjabi (ਪੰਜਾਬੀ)</SelectItem>
+                    <SelectItem value="ur">Urdu (اردو)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

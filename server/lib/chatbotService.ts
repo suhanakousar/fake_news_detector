@@ -42,14 +42,43 @@ async function queryHuggingFaceAPI(payload: any) {
 export async function generateChatbotResponse(
   question: string,
   contentContext: string,
-  analysisResult: AnalysisResult
+  analysisResult: AnalysisResult,
+  language: string = 'en'
 ): Promise<string> {
   // Extract classification and reasoning from analysisResult
   const analysisClassification = analysisResult.classification;
   const reasoningPoints = analysisResult.reasoning;
   
+  // Define language-specific error messages
+  const errorMessages: Record<string, { notAvailable: string, noResponse: string, error: string }> = {
+    en: {
+      notAvailable: "Sorry, the AI assistant is currently unavailable. Please try again later.",
+      noResponse: "Sorry, I couldn't generate a response. Please try a different question.",
+      error: "Sorry, an error occurred while generating a response. Please try again later."
+    },
+    es: {
+      notAvailable: "Lo siento, el asistente de IA no está disponible actualmente. Por favor, inténtalo de nuevo más tarde.",
+      noResponse: "Lo siento, no pude generar una respuesta. Por favor, intenta con una pregunta diferente.",
+      error: "Lo siento, ocurrió un error al generar una respuesta. Por favor, inténtalo de nuevo más tarde."
+    },
+    fr: {
+      notAvailable: "Désolé, l'assistant IA n'est pas disponible pour le moment. Veuillez réessayer plus tard.",
+      noResponse: "Désolé, je n'ai pas pu générer de réponse. Veuillez essayer une question différente.",
+      error: "Désolé, une erreur s'est produite lors de la génération d'une réponse. Veuillez réessayer plus tard."
+    },
+    hi: {
+      notAvailable: "क्षमा करें, AI सहायक वर्तमान में उपलब्ध नहीं है। कृपया बाद में पुनः प्रयास करें।",
+      noResponse: "क्षमा करें, मैं एक प्रतिक्रिया उत्पन्न नहीं कर सका। कृपया एक अलग प्रश्न का प्रयास करें।",
+      error: "क्षमा करें, प्रतिक्रिया उत्पन्न करते समय एक त्रुटि हुई। कृपया बाद में पुनः प्रयास करें।"
+    }
+    // Add other languages as needed
+  };
+
+  // Default to English if language-specific error messages aren't available
+  const currentErrorMessages = errorMessages[language] || errorMessages.en;
+  
   if (!HUGGINGFACE_API_KEY) {
-    return "Sorry, the AI assistant is currently unavailable. Please try again later.";
+    return currentErrorMessages.notAvailable;
   }
 
   try {
@@ -60,6 +89,8 @@ export async function generateChatbotResponse(
     
     const reasoningText = reasoningPoints.join("\n- ");
     
+
+    
     const chatPrompt = `<s>[INST] You are TruthLens AI Assistant, an expert in fact-checking and misinformation analysis. 
     
 You're answering a question about content that has been classified as "${analysisClassification}" based on the following reasoning:
@@ -69,7 +100,9 @@ Content: "${truncatedContent}"
 
 User question: ${question}
 
-Provide a helpful, accurate, and concise answer focusing specifically on the question. Base your response only on factual information. [/INST]</s>`;
+Provide a helpful, accurate, and concise answer focusing specifically on the question. Base your response only on factual information.
+
+IMPORTANT: Your response MUST be in ${language} language. [/INST]</s>`;
 
     // Query the model
     const response = await queryHuggingFaceAPI({
@@ -88,9 +121,9 @@ Provide a helpful, accurate, and concise answer focusing specifically on the que
       return response[0].generated_text.trim();
     }
 
-    return "Sorry, I couldn't generate a response. Please try a different question.";
+    return currentErrorMessages.noResponse;
   } catch (error) {
     console.error('Error generating chatbot response:', error);
-    return "Sorry, an error occurred while generating a response. Please try again later.";
+    return currentErrorMessages.error;
   }
 }

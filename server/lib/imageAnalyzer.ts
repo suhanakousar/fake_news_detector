@@ -20,8 +20,35 @@ export async function analyzeImage(imageBuffer: Buffer, language: string = 'en')
   try {
     console.log('Starting OCR on image...');
     
-    // Initialize Tesseract.js worker with English language data
-    const worker = await createWorker('eng');
+    // Map language codes to Tesseract language codes
+    const tesseractLanguageMap: Record<string, string> = {
+      en: 'eng',
+      es: 'spa',
+      fr: 'fra',
+      de: 'deu',
+      it: 'ita',
+      pt: 'por',
+      ru: 'rus',
+      zh: 'chi_sim',
+      ja: 'jpn',
+      ko: 'kor',
+      ar: 'ara',
+      hi: 'hin',
+      bn: 'ben',
+      ta: 'tam',
+      te: 'tel',
+      mr: 'mar',
+      gu: 'guj',
+      kn: 'kan',
+      ml: 'mal',
+      pa: 'pan',
+      ur: 'urd'
+    };
+    
+    // Initialize Tesseract.js worker with appropriate language data
+    const tesseractLang = tesseractLanguageMap[language] || 'eng';
+    console.log(`Using OCR language: ${tesseractLang} for language code: ${language}`);
+    const worker = await createWorker(tesseractLang);
     
     // Perform OCR on the image
     const { data: { text } } = await worker.recognize(imageBuffer);

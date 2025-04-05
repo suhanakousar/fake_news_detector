@@ -474,19 +474,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // AI Debunker Chatbot
   app.post("/api/chatbot", async (req, res) => {
     try {
-      const { question, content, analysisResult } = req.body;
+      const { question, content, analysisResult, language = 'en' } = req.body;
       
       if (!question || typeof question !== 'string' || question.trim() === '') {
         return res.status(400).json({ message: "Question is required" });
       }
       
+      // Define language-specific responses for general queries
+      const generalResponses: Record<string, string> = {
+        en: "I'm TruthLens AI, your fact-checking assistant. To analyze content, try pasting a news article, URL, or uploading a document on the main page. I can then help you identify potential misinformation and answer specific questions about the content.",
+        es: "Soy TruthLens AI, tu asistente de verificación de hechos. Para analizar contenido, intenta pegar un artículo de noticias, URL o subir un documento en la página principal. Puedo ayudarte a identificar posible desinformación y responder preguntas específicas sobre el contenido.",
+        fr: "Je suis TruthLens AI, votre assistant de vérification des faits. Pour analyser du contenu, essayez de coller un article d'actualité, une URL ou de télécharger un document sur la page principale. Je peux alors vous aider à identifier la désinformation potentielle et répondre à des questions spécifiques sur le contenu.",
+        hi: "मैं TruthLens AI हूं, आपका तथ्य-जांच सहायक। सामग्री का विश्लेषण करने के लिए, मुख्य पृष्ठ पर समाचार लेख, URL पेस्ट करें, या कोई दस्तावेज़ अपलोड करें। मैं फिर संभावित गलत जानकारी की पहचान करने और सामग्री के बारे में विशिष्ट प्रश्नों के उत्तर देने में आपकी मदद कर सकता हूं।"
+      };
+      
       // Handle general chatbot queries (without analysis context)
       if (!analysisResult) {
-        // Generate a general response based on the question only
-        const response = "I'm TruthLens AI, your fact-checking assistant. " +
-          "To analyze content, try pasting a news article, URL, or uploading a document on the main page. " +
-          "I can then help you identify potential misinformation and answer specific questions about the content.";
-        
+        // Generate a general response based on the question only in the appropriate language
+        const response = generalResponses[language] || generalResponses.en;
         return res.json({ response });
       }
       
@@ -502,15 +507,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const response = await generateChatbotResponse(
         question,
         content,
-        analysisResult
+        analysisResult,
+        language
       );
       
       res.json({ response });
     } catch (error) {
       console.error("Error generating chatbot response:", error);
+      
+      // Define language-specific error messages
+      const errorMessages: Record<string, string> = {
+        en: "I'm sorry, I couldn't generate a response at this time. Please try again later.",
+        es: "Lo siento, no pude generar una respuesta en este momento. Por favor, inténtalo de nuevo más tarde.",
+        fr: "Je suis désolé, je n'ai pas pu générer une réponse pour le moment. Veuillez réessayer plus tard.",
+        hi: "क्षमा करें, मैं इस समय प्रतिक्रिया नहीं दे सका। कृपया बाद में पुनः प्रयास करें।"
+      };
+      
+      const language = req.body.language || 'en';
+      const errorResponse = errorMessages[language] || errorMessages.en;
+      
       res.status(500).json({ 
         message: "An error occurred while generating a response",
-        response: "I'm sorry, I couldn't generate a response at this time. Please try again later."
+        response: errorResponse
       });
     }
   });
