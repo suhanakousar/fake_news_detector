@@ -56,15 +56,15 @@ const Header: React.FC = () => {
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-6">
           <Link href="/">
-            <a className="text-sm font-medium hover:text-primary transition-colors">Home</a>
+            <span className="text-sm font-medium hover:text-primary transition-colors cursor-pointer">Home</span>
           </Link>
           {isAuthenticated && (
             <Link href="/history">
-              <a className="text-sm font-medium hover:text-primary transition-colors">History</a>
+              <span className="text-sm font-medium hover:text-primary transition-colors cursor-pointer">History</span>
             </Link>
           )}
           <Link href="/about">
-            <a className="text-sm font-medium hover:text-primary transition-colors">About</a>
+            <span className="text-sm font-medium hover:text-primary transition-colors cursor-pointer">About</span>
           </Link>
         </nav>
 
@@ -119,12 +119,12 @@ const Header: React.FC = () => {
               <DropdownMenuContent align="end">
                 <DropdownMenuItem asChild>
                   <Link href="/dashboard">
-                    <a className="w-full">Dashboard</a>
+                    <span className="w-full cursor-pointer">Dashboard</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/history">
-                    <a className="w-full">My History</a>
+                    <span className="w-full cursor-pointer">My History</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
@@ -161,15 +161,15 @@ const Header: React.FC = () => {
             <SheetContent side="right">
               <div className="flex flex-col space-y-4 mt-8">
                 <Link href="/">
-                  <a className="text-lg font-medium hover:text-primary transition-colors py-2">Home</a>
+                  <span className="text-lg font-medium hover:text-primary transition-colors py-2 block cursor-pointer">Home</span>
                 </Link>
                 {isAuthenticated && (
                   <Link href="/history">
-                    <a className="text-lg font-medium hover:text-primary transition-colors py-2">History</a>
+                    <span className="text-lg font-medium hover:text-primary transition-colors py-2 block cursor-pointer">History</span>
                   </Link>
                 )}
                 <Link href="/about">
-                  <a className="text-lg font-medium hover:text-primary transition-colors py-2">About</a>
+                  <span className="text-lg font-medium hover:text-primary transition-colors py-2 block cursor-pointer">About</span>
                 </Link>
                 
                 {/* Mobile language selector */}
