@@ -68,7 +68,7 @@ function preprocessText(text: string): string {
     .trim();
 }
 
-export async function analyzeDocument(docBuffer: Buffer, filename: string): Promise<AnalysisResult> {
+export async function analyzeDocument(docBuffer: Buffer, filename: string, language: string = 'en'): Promise<AnalysisResult> {
   try {
     // Determine document type based on file extension
     const fileExt = filename.split('.').pop()?.toLowerCase();
@@ -103,10 +103,10 @@ export async function analyzeDocument(docBuffer: Buffer, filename: string): Prom
     }
     
     // Analyze the text content
-    const analysisResult = await analyzeText(processedText);
+    const analysisResult = await analyzeText(processedText, language);
     
     // Enhance analysis with AI features
-    const enhancedResult = await enhanceAnalysisWithAI(analysisResult, processedText);
+    const enhancedResult = await enhanceAnalysisWithAI(analysisResult, processedText, language);
     
     return enhancedResult;
   } catch (error) {

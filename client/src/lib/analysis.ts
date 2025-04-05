@@ -5,17 +5,24 @@ export interface AnalysisRequest {
   text?: string;
   url?: string;
   file?: File;
+  language?: string;
 }
 
 export async function analyzeContent(request: AnalysisRequest): Promise<AnalysisResult> {
   try {
     if (request.text) {
-      const response = await apiRequest('POST', '/api/analyze/text', { text: request.text });
+      const response = await apiRequest('POST', '/api/analyze/text', { 
+        text: request.text,
+        language: request.language || 'en'
+      });
       return await response.json();
     } 
     
     if (request.url) {
-      const response = await apiRequest('POST', '/api/analyze/url', { url: request.url });
+      const response = await apiRequest('POST', '/api/analyze/url', { 
+        url: request.url,
+        language: request.language || 'en'
+      });
       return await response.json();
     }
     
@@ -40,6 +47,11 @@ export async function analyzeContent(request: AnalysisRequest): Promise<Analysis
       // Create form data for file upload
       const formData = new FormData();
       formData.append(endpoint.includes('image') ? 'image' : 'document', request.file);
+      
+      // Add language parameter if provided
+      if (request.language) {
+        formData.append('language', request.language);
+      }
       
       // Make request with FormData
       const response = await fetch(endpoint, {

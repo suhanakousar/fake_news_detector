@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { 
   AlignLeft, Link, FileText, Image, Mic, 
@@ -31,6 +32,7 @@ const NewsAnalyzer: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [showResults, setShowResults] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState('en');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   
@@ -184,7 +186,7 @@ const NewsAnalyzer: React.FC = () => {
             setIsAnalyzing(false);
             return;
           }
-          request = { text: textInput };
+          request = { text: textInput, language: selectedLanguage };
           break;
         
         case 'url':
@@ -197,7 +199,7 @@ const NewsAnalyzer: React.FC = () => {
             setIsAnalyzing(false);
             return;
           }
-          request = { url: urlInput };
+          request = { url: urlInput, language: selectedLanguage };
           break;
         
         case 'document':
@@ -211,7 +213,7 @@ const NewsAnalyzer: React.FC = () => {
             setIsAnalyzing(false);
             return;
           }
-          request = { file: selectedFile };
+          request = { file: selectedFile, language: selectedLanguage };
           break;
         
         case 'voice':
@@ -229,7 +231,7 @@ const NewsAnalyzer: React.FC = () => {
             stopRecording();
           }
           
-          request = { text: voiceInput };
+          request = { text: voiceInput, language: selectedLanguage };
       }
       
       // Analyze content
@@ -585,6 +587,35 @@ const NewsAnalyzer: React.FC = () => {
                   <Mic className="mr-2 h-4 w-4" /> Voice
                 </TabsTrigger>
               </TabsList>
+            </div>
+            
+            {/* Language Selector */}
+            <div className="mb-4 flex justify-end">
+              <div className="flex items-center space-x-2">
+                <Globe className="h-4 w-4 text-gray-500" />
+                <Select 
+                  value={selectedLanguage} 
+                  onValueChange={setSelectedLanguage}
+                >
+                  <SelectTrigger className="w-[180px] h-9">
+                    <SelectValue placeholder="Select language" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="en">English</SelectItem>
+                    <SelectItem value="es">Spanish (Español)</SelectItem>
+                    <SelectItem value="fr">French (Français)</SelectItem>
+                    <SelectItem value="de">German (Deutsch)</SelectItem>
+                    <SelectItem value="it">Italian (Italiano)</SelectItem>
+                    <SelectItem value="pt">Portuguese (Português)</SelectItem>
+                    <SelectItem value="ru">Russian (Русский)</SelectItem>
+                    <SelectItem value="zh">Chinese (中文)</SelectItem>
+                    <SelectItem value="ja">Japanese (日本語)</SelectItem>
+                    <SelectItem value="ko">Korean (한국어)</SelectItem>
+                    <SelectItem value="ar">Arabic (العربية)</SelectItem>
+                    <SelectItem value="hi">Hindi (हिन्दी)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             
             {/* Tab Content */}

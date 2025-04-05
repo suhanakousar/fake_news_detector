@@ -6,11 +6,13 @@ import { enhanceAnalysisWithAI } from "./aiEnhancer";
 /**
  * Analyzes text content for potential misinformation
  * Combines basic pattern detection with Perplexity AI analysis when available
+ * @param text The text to analyze
+ * @param language The language code (e.g., 'en', 'es', 'fr') of the text
  */
-export async function analyzeText(text: string): Promise<AnalysisResult> {
+export async function analyzeText(text: string, language: string = 'en'): Promise<AnalysisResult> {
   // Run basic pattern detection and Perplexity analysis in parallel
   const [perplexityResults] = await Promise.all([
-    analyzeWithPerplexity(text)
+    analyzeWithPerplexity(text, language)
   ]);
   
   // Run the basic keyword analysis
@@ -172,7 +174,7 @@ export async function analyzeText(text: string): Promise<AnalysisResult> {
   
   // Enhance the result with AI-powered features (summarization and XAI)
   try {
-    return await enhanceAnalysisWithAI(baseResult, text);
+    return await enhanceAnalysisWithAI(baseResult, text, language);
   } catch (error) {
     console.error('Error enhancing analysis with AI:', error);
     return baseResult;

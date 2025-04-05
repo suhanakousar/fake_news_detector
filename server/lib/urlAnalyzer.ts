@@ -4,7 +4,7 @@ import { enhanceAnalysisWithAI } from "./aiEnhancer";
 import axios from "axios";
 import { JSDOM } from "jsdom";
 
-export async function analyzeUrl(url: string): Promise<AnalysisResult> {
+export async function analyzeUrl(url: string, language: string = 'en'): Promise<AnalysisResult> {
   try {
     // Validate URL format
     try {
@@ -91,7 +91,7 @@ export async function analyzeUrl(url: string): Promise<AnalysisResult> {
     const textToAnalyze = `${title} ${metaDescription} ${content}`;
 
     // Analyze the extracted text
-    const analysisResult = await analyzeText(textToAnalyze);
+    const analysisResult = await analyzeText(textToAnalyze, language);
 
     // Extract domain for source credibility
     const domain = new URL(url).hostname;

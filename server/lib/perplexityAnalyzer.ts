@@ -32,9 +32,10 @@ async function queryHuggingFaceAPI(payload: any) {
 /**
  * Enhanced text analysis using Hugging Face Inference API
  * @param text Text to analyze
+ * @param language The language code (e.g., 'en', 'es', 'fr') of the text
  * @returns Enhanced analysis results or null if API key is missing or request fails
  */
-export async function analyzeWithPerplexity(text: string): Promise<{ 
+export async function analyzeWithPerplexity(text: string, language: string = 'en'): Promise<{ 
   enhancedReasoning: string[] | null,
   enhancedFactChecks: FactCheck[] | null
 }> {
@@ -50,13 +51,13 @@ export async function analyzeWithPerplexity(text: string): Promise<{
     
     const prompt = `<s>[INST] You are an expert fact-checker and misinformation analyst. 
     
-Analyze the following text for potential misinformation, fake news, or misleading content:
+Analyze the following text for potential misinformation, fake news, or misleading content. The text is in ${language} language.
 
 """
 ${truncatedText}
 """
 
-Please provide:
+Please provide (in ${language} language):
 1. A detailed fact-check with clear reasoning (numbered points)
 2. At least three reliable sources that either support or refute claims in the text (with URLs)
 3. What linguistic patterns in the text could indicate misinformation

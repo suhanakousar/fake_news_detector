@@ -16,7 +16,7 @@ function preprocessText(text: string): string {
 /**
  * Extracts and analyzes text from images using OCR
  */
-export async function analyzeImage(imageBuffer: Buffer): Promise<AnalysisResult> {
+export async function analyzeImage(imageBuffer: Buffer, language: string = 'en'): Promise<AnalysisResult> {
   try {
     console.log('Starting OCR on image...');
     
@@ -38,10 +38,10 @@ export async function analyzeImage(imageBuffer: Buffer): Promise<AnalysisResult>
     const processedText = preprocessText(text);
     
     // Analyze the extracted text
-    const analysisResult = await analyzeText(processedText);
+    const analysisResult = await analyzeText(processedText, language);
     
     // Enhance with AI features
-    const enhancedResult = await enhanceAnalysisWithAI(analysisResult, processedText);
+    const enhancedResult = await enhanceAnalysisWithAI(analysisResult, processedText, language);
     
     return enhancedResult;
   } catch (error) {

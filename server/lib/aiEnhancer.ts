@@ -36,9 +36,10 @@ async function queryHuggingFaceAPI(apiUrl: string, payload: any) {
 /**
  * Generates a concise summary of the article content using BART model
  * @param text The article text to summarize
+ * @param language The language code (e.g., 'en', 'es', 'fr') of the text
  * @returns A concise summary of the article
  */
-export async function generateArticleSummary(text: string): Promise<string | null> {
+export async function generateArticleSummary(text: string, language: string = 'en'): Promise<string | null> {
   if (!HUGGINGFACE_API_KEY) {
     console.log('Hugging Face API key not available, skipping article summarization');
     return null;
@@ -78,9 +79,10 @@ export async function generateArticleSummary(text: string): Promise<string | nul
  * Generate explainable AI details that highlight why content was detected as fake or real
  * @param result The current analysis result
  * @param text The analyzed text content
+ * @param language The language code (e.g., 'en', 'es', 'fr') of the text
  * @returns Enhanced analysis result with XAI details
  */
-export async function generateXaiDetails(result: AnalysisResult, text: string): Promise<AnalysisResult> {
+export async function generateXaiDetails(result: AnalysisResult, text: string, language: string = 'en'): Promise<AnalysisResult> {
   if (!HUGGINGFACE_API_KEY) {
     console.log('Hugging Face API key not available, skipping XAI enhancement');
     return result;
@@ -231,7 +233,7 @@ Respond in valid JSON format only:
           result: maxProbClass.label,
           confidence: maxProbClass.score
         };
-      }).filter((insight): boolean => Boolean(insight)) as ClassificationInsight[] : [];
+      }).filter((insight: any): boolean => Boolean(insight)) as ClassificationInsight[] : [];
     
     // Use classification insights to create detection confidence if none were generated
     if (detectionConfidence.length === 0 && classificationInsights.length > 0) {
@@ -271,14 +273,15 @@ Respond in valid JSON format only:
  * 
  * @param result The original analysis result
  * @param text The analyzed text content
+ * @param language The language code (e.g., 'en', 'es', 'fr') of the text
  * @returns Enhanced analysis result with AI features
  */
-export async function enhanceAnalysisWithAI(result: AnalysisResult, text: string): Promise<AnalysisResult> {
+export async function enhanceAnalysisWithAI(result: AnalysisResult, text: string, language: string = 'en'): Promise<AnalysisResult> {
   try {
     // Run article summary and XAI enhancement in parallel
     const [summary, enhancedResult] = await Promise.all([
-      generateArticleSummary(text),
-      generateXaiDetails(result, text)
+      generateArticleSummary(text, language),
+      generateXaiDetails(result, text, language)
     ]);
     
     // Add the summary to the result if available

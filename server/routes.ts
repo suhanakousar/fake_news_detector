@@ -365,13 +365,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Analysis routes
   app.post("/api/analyze/text", async (req, res) => {
     try {
-      const { text } = req.body;
+      const { text, language = 'en' } = req.body;
       
       if (!text || typeof text !== 'string' || text.trim() === '') {
         return res.status(400).json({ message: "Text is required" });
       }
 
-      const result = await analyzeText(text);
+      const result = await analyzeText(text, language);
       
       // If user is authenticated, save the analysis
       if (req.session.userId) {
@@ -392,13 +392,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/analyze/url", async (req, res) => {
     try {
-      const { url } = req.body;
+      const { url, language = 'en' } = req.body;
       
       if (!url || typeof url !== 'string' || url.trim() === '') {
         return res.status(400).json({ message: "URL is required" });
       }
 
-      const result = await analyzeUrl(url);
+      const result = await analyzeUrl(url, language);
       
       // If user is authenticated, save the analysis
       if (req.session.userId) {
@@ -422,8 +422,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!req.file) {
         return res.status(400).json({ message: "Image file is required" });
       }
+      
+      const language = req.body.language || 'en';
 
-      const result = await analyzeImage(req.file.buffer);
+      const result = await analyzeImage(req.file.buffer, language);
       
       // If user is authenticated, save the analysis
       if (req.session.userId) {
@@ -447,8 +449,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!req.file) {
         return res.status(400).json({ message: "Document file is required" });
       }
+      
+      const language = req.body.language || 'en';
 
-      const result = await analyzeDocument(req.file.buffer, req.file.originalname);
+      const result = await analyzeDocument(req.file.buffer, req.file.originalname, language);
       
       // If user is authenticated, save the analysis
       if (req.session.userId) {
@@ -585,7 +589,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Browser Extension API Endpoints
   app.post("/api/analyze/extension", async (req, res) => {
     try {
-      const { text, url } = req.body;
+      const { text, url, language = 'en' } = req.body;
       
       if ((!text || typeof text !== 'string' || text.trim() === '') && 
           (!url || typeof url !== 'string' || url.trim() === '')) {
@@ -596,11 +600,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // If URL is provided, analyze it
       if (url && url.trim() !== '') {
-        result = await analyzeUrl(url);
+        result = await analyzeUrl(url, language);
       } 
       // Otherwise analyze the text
       else {
-        result = await analyzeText(text);
+        result = await analyzeText(text, language);
       }
       
       // No need to save analysis for extension requests unless user is authenticated
