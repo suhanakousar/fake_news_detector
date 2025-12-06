@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+ import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion, AnimatePresence } from "framer-motion";
@@ -77,11 +78,11 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, activeTab, setAc
                     <DialogTitle className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-indigo-600">
                       {activeTab === 'login' ? 'Welcome back' : 'Create your account'}
                     </DialogTitle>
-                    <p className="text-gray-500 dark:text-gray-400 mt-1">
+                    <DialogDescription className="text-gray-500 dark:text-gray-400 mt-1">
                       {activeTab === 'login' 
                         ? 'Log in to access your TruthLens account' 
                         : 'Join TruthLens to fight misinformation together'}
-                    </p>
+                    </DialogDescription>
                   </DialogHeader>
                   
                   <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'login' | 'register')} className="w-full mt-4">
