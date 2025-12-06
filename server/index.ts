@@ -8,6 +8,7 @@ import { setupVite, serveStatic, log } from "./vite";
 import { type CorsRequest } from 'cors';
 import cors from 'cors';
 import path from "path";
+import fs from "fs";
 
 const app = express();
 
@@ -98,10 +99,29 @@ app.options('/api/analyze/text', (req, res) => {
   try {
     const server = await registerRoutes(app);
     
+    // Determine if we're in production
+    // Check multiple signals: NODE_ENV, existence of built files, or Render environment
+    const distPath = path.resolve(import.meta.dirname, "..", "dist", "public");
+    const hasBuiltFiles = fs.existsSync(distPath) && fs.existsSync(path.join(distPath, "index.html"));
+    const explicitProduction = process.env.NODE_ENV === "production";
+    const isRender = !!process.env.RENDER; // Render sets this automatically
+    
+    // Use production mode if:
+    // 1. NODE_ENV is explicitly "production", OR
+    // 2. Built files exist (we're running a built version), OR
+    // 3. We're on Render (and not explicitly in development)
+    const isProduction = explicitProduction || 
+                        (hasBuiltFiles && process.env.NODE_ENV !== "development") ||
+                        (isRender && process.env.NODE_ENV !== "development");
+    
+    log(`🔍 Production detection: NODE_ENV=${process.env.NODE_ENV}, hasBuiltFiles=${hasBuiltFiles}, isRender=${isRender}, isProduction=${isProduction}`);
+    
     // Setup Vite for development, serve static files in production
-    if (process.env.NODE_ENV !== "production") {
+    if (!isProduction) {
+      log(`🔧 Using Vite dev server`);
       await setupVite(app, server);
     } else {
+      log(`📦 Using production static file serving`);
       // In production, serve the built React app
       serveStatic(app);
     }
@@ -109,9 +129,9 @@ app.options('/api/analyze/text', (req, res) => {
     const port = process.env.PORT || 5002;
     server.listen(port, "0.0.0.0", () => {
       log(`🚀 Server running on port ${port}`);
-      log(`📦 Environment: ${process.env.NODE_ENV || 'development'}`);
-      if (process.env.NODE_ENV === "production") {
-        log(`🌐 Serving static files from: ${path.resolve(import.meta.dirname, "..", "dist", "public")}`);
+      log(`📦 Environment: ${isProduction ? 'production' : 'development'}`);
+      if (isProduction) {
+        log(`🌐 Serving static files from: ${distPath}`);
       }
     });
 

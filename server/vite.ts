@@ -93,14 +93,20 @@ export function serveStatic(app: Express) {
     );
   }
 
-  // Serve static files from the React build
-  app.use(express.static(distPath));
+  log(`📁 Serving static files from: ${distPath}`);
 
-  // Fallback to index.html for React Router (but skip API routes)
-  app.get("*", (req, res, next) => {
+  // Serve static files from the React build (CSS, JS, images, etc.)
+  app.use(express.static(distPath, {
+    maxAge: '1y', // Cache static assets for 1 year
+    etag: true
+  }));
+
+  // Fallback to index.html for React Router (SPA routing)
+  // This must be LAST, after all API routes
+  app.get("*", (req, res) => {
     // Skip API routes - they should be handled by registerRoutes
     if (req.path.startsWith('/api')) {
-      return next();
+      return res.status(404).json({ message: 'API route not found' });
     }
     res.sendFile(path.resolve(distPath, "index.html"));
   });
