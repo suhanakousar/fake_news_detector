@@ -14,7 +14,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { BarChart3, BellRing, Key, User, LockIcon, BellIcon, DownloadIcon, EyeOff, Clock, FileText, Trash2 } from 'lucide-react';
+import { BarChart3, BellRing, Key, User, LockIcon, BellIcon, DownloadIcon, EyeOff, Clock, FileText, Trash2, ArrowLeft } from 'lucide-react';
 import { Redirect } from 'wouter';
 
 // Personal info form schema
@@ -172,6 +172,15 @@ const Profile = () => {
 
   return (
     <div className="container mx-auto px-4 py-12">
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => window.history.back()}
+        className="mb-4"
+      >
+        <ArrowLeft className="h-4 w-4 mr-2" />
+        Back
+      </Button>
       <h1 className="text-4xl font-bold mb-8">My Profile</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

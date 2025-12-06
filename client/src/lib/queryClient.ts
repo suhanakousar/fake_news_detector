@@ -12,15 +12,43 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  const res = await fetch(url, {
-    method,
-    headers: data ? { "Content-Type": "application/json" } : {},
-    body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
-  });
+  // Force relative URLs - server and client are on the same port
+  // Ignore VITE_API_URL if it's set to the wrong port
+  const envApiUrl = import.meta.env.VITE_API_URL;
+  const BASE_URL = (envApiUrl && !envApiUrl.includes('3000')) ? envApiUrl : '';
+  const normalizedUrl = url.startsWith('/') ? url : `/${url}`;
+  const fullUrl = BASE_URL ? `${BASE_URL}${normalizedUrl}` : normalizedUrl;
+  
+  // Debug log to help identify issues
+  if (fullUrl.includes('3000')) {
+    console.warn('⚠️ API request going to port 3000! This should not happen. Full URL:', fullUrl);
+  }
+  
+  try {
+    const res = await fetch(fullUrl, {
+      method,
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: data ? JSON.stringify(data) : undefined,
+      credentials: "include",
+      mode: "cors"
+    });
 
-  await throwIfResNotOk(res);
-  return res;
+    await throwIfResNotOk(res);
+    return res;
+  } catch (error) {
+    console.error('API Request failed:', {
+      url: fullUrl,
+      method,
+      error: error instanceof Error ? error.message : String(error),
+      baseUrl: BASE_URL || '(relative)',
+      normalizedUrl,
+      currentOrigin: window.location.origin
+    });
+    throw error;
+  }
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";

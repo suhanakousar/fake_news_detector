@@ -1,8 +1,36 @@
 import type { AnalysisResult } from "@shared/schema";
 import { analyzeText } from "./analyzer";
-import { enhanceAnalysisWithAI } from "./aiEnhancer";
 import axios from "axios";
 import { JSDOM } from "jsdom";
+
+/**
+ * Extract author information from HTML meta tags
+ */
+function extractAuthor(document: Document): string | undefined {
+  // Try various meta tags for author
+  const authorSelectors = [
+    'meta[name="author"]',
+    'meta[property="article:author"]',
+    '[rel="author"]',
+    '.author',
+    '.byline',
+    '[itemprop="author"]'
+  ];
+
+  for (const selector of authorSelectors) {
+    const element = document.querySelector(selector);
+    if (element) {
+      const content = element.getAttribute('content') || 
+                     element.getAttribute('href') || 
+                     element.textContent;
+      if (content && content.trim().length > 0) {
+        return content.trim();
+      }
+    }
+  }
+
+  return undefined;
+}
 
 export async function analyzeUrl(url: string, language: string = 'en'): Promise<AnalysisResult> {
   try {
@@ -10,23 +38,16 @@ export async function analyzeUrl(url: string, language: string = 'en'): Promise<
     try {
       new URL(url);
     } catch (error) {
+      // Return error result using the new schema
       return {
         classification: "misleading",
         confidence: 0.7,
-        reasoning: ["Invalid URL format"],
-        sourceCredibility: {
-          name: "Invalid URL",
-          score: 0.1,
-          level: "low"
-        },
-        factChecks: [],
-        sentiment: {
-          emotionalTone: "Neutral",
-          emotionalToneScore: 0.5,
-          languageStyle: "Unknown",
-          languageStyleScore: 0.5,
-          politicalLeaning: "Neutral",
-          politicalLeaningScore: 0.5
+        explanation: "Invalid URL format provided",
+        sources: [],
+        patterns: {
+          sensationalist: 0,
+          unreliableSource: 0,
+          unverifiedClaims: 0
         }
       };
     }
@@ -48,6 +69,9 @@ export async function analyzeUrl(url: string, language: string = 'en'): Promise<
 
     // Get meta description
     const metaDescription = document.querySelector('meta[name="description"]')?.getAttribute('content') || '';
+
+    // Extract author information
+    const author = extractAuthor(document);
 
     // Extract article content
     let content = '';
@@ -90,33 +114,16 @@ export async function analyzeUrl(url: string, language: string = 'en'): Promise<
     // Combine title, description, and content
     const textToAnalyze = `${title} ${metaDescription} ${content}`;
 
-    // Analyze the extracted text
-    const analysisResult = await analyzeText(textToAnalyze, language);
+    // Use the 5-step pipeline with URL and author information
+    // This will automatically analyze the source in Step 3
+    const analysisResult = await analyzeText(textToAnalyze, language, url, author);
 
-    // Extract domain for source credibility
-    const domain = new URL(url).hostname;
+    // Enhance explanation to mention URL analysis
+    const enhancedExplanation = `Analyzed content from URL: ${url}. ${analysisResult.explanation}`;
 
-    // Check domain reputation (simplified)
-    const knownFakeNewsDomains = [
-      'fakesite.com',
-      'newsisfake.org',
-      'conspiracyjournal.net'
-    ];
-
-    const isKnownFakeNewsSite = knownFakeNewsDomains.some(d => domain.includes(d));
-
-    // Override source credibility based on domain reputation
-    let domainSourceCredibility = {
-      name: domain,
-      score: isKnownFakeNewsSite ? 0.1 : analysisResult.sourceCredibility.score,
-      level: isKnownFakeNewsSite ? "low" as const : analysisResult.sourceCredibility.level
-    };
-
-    // Return combined analysis
     return {
       ...analysisResult,
-      sourceCredibility: domainSourceCredibility,
-      reasoning: [`Analyzed content from URL: ${url}`, ...analysisResult.reasoning]
+      explanation: enhancedExplanation
     };
   } catch (error) {
     console.error("Error analyzing URL:", error);
@@ -125,20 +132,12 @@ export async function analyzeUrl(url: string, language: string = 'en'): Promise<
     return {
       classification: "misleading",
       confidence: 0.5,
-      reasoning: ["Error fetching or processing URL content"],
-      sourceCredibility: {
-        name: "URL Source",
-        score: 0.5,
-        level: "medium"
-      },
-      factChecks: [],
-      sentiment: {
-        emotionalTone: "Neutral",
-        emotionalToneScore: 0.5,
-        languageStyle: "Unknown",
-        languageStyleScore: 0.5,
-        politicalLeaning: "Neutral",
-        politicalLeaningScore: 0.5
+      explanation: "Error fetching or processing URL content. Please check if the URL is accessible.",
+      sources: [],
+      patterns: {
+        sensationalist: 0,
+        unreliableSource: 0,
+        unverifiedClaims: 0
       }
     };
   }

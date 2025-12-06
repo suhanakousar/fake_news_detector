@@ -1,27 +1,71 @@
+import { useMutation } from '@tanstack/react-query';
+
 import React, { useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Card, CardContent } from './ui/card';
+import { Button } from './ui/button';
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+} from './ui/collapsible';
 import { 
   AlertCircle, Download, Share, Search, Lightbulb,
   ChevronDown, ExternalLink, FileText, Microscope, 
   Code, Link as LinkIcon, MessageSquare, SendIcon, Loader2
 } from 'lucide-react';
-import { AnalysisResult } from '@shared/schema';
+import type { AnalysisResult } from '@shared/schema';
+import ChatbotFloating from './ChatbotFloating';
 import { 
-  getClassificationColor, getClassificationBgColor, 
-  getScoreColor, getCredibilityLevelColor, getSentimentColor 
-} from '@/lib/analysis';
-import { useMutation } from '@tanstack/react-query';
-import { apiRequest } from '@/lib/queryClient';
-import ChatbotFloating from '@/components/ChatbotFloating';
+  getClassificationColor,
+  getClassificationBgColor,
+  getCredibilityLevelColor,
+  getSentimentColor 
+} from '@/lib/helpers';
+import { generatePDFReport } from '@/lib/pdfGenerator';
+
+interface ExtendedAnalysisResult extends AnalysisResult {
+  reasoning?: string[];
+  sourceCredibility?: {
+    name: string;
+    score: number;
+    level: 'high' | 'medium' | 'low';
+  };
+  factChecks?: Array<{
+    source: string;
+    title: string;
+    snippet: string;
+    url: string;
+  }>;
+  sentiment?: {
+    emotionalTone: string;
+    emotionalToneScore: number;
+    languageStyle: string;
+    languageStyleScore: number;
+    politicalLeaning: string;
+    politicalLeaningScore: number;
+  };
+  summary?: string;
+  xai?: {
+    keyPhrases?: Array<{
+      text: string;
+      impact: number;
+      explanation: string;
+    }>;
+    detectionConfidence?: Array<{
+      algorithm: string;
+      score: number;
+      explanation: string;
+    }>;
+    alternativeSources?: Array<{
+      title: string;
+      url: string;
+      trustScore: number;
+    }>;
+  };
+}
 
 interface ResultsDisplayProps {
-  result: AnalysisResult;
+  result: ExtendedAnalysisResult;
   contentPreview: string;
   onReset: () => void;
 }
@@ -38,33 +82,53 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result, contentPreview,
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isChatOpen, setIsChatOpen] = useState(false);
   
-  // Create the chatbot mutation
   const chatbotMutation = useMutation({
     mutationFn: async (question: string) => {
-      const response = await apiRequest('POST', '/api/chatbot', {
-        question,
-        content: contentPreview,
-        analysisResult: result
-      });
-      return await response.json();
+      try {
+        const response = await apiRequest('POST', '/api/chatbot', {
+          question,
+          content: contentPreview,
+          analysisResult: result
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || `Server error: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('[CHATBOT] Response received:', data);
+        
+        if (!data.response) {
+          throw new Error('No response in data');
+        }
+        
+        return data;
+      } catch (error) {
+        console.error('[CHATBOT] Request error:', error);
+        throw error;
+      }
     },
     onSuccess: (data) => {
-      // Add bot response to messages
+      console.log('[CHATBOT] Success, adding message:', data.response?.substring(0, 50));
       setChatMessages(prev => [
         ...prev,
         {
-          text: data.response,
+          text: data.response || "I couldn't generate a response, but here's what I know about this analysis.",
           isUser: false,
           timestamp: new Date()
         }
       ]);
     },
     onError: (error) => {
-      // Handle error
+      console.error('[CHATBOT] Error:', error);
+      // Provide helpful fallback based on analysis
+      const fallbackText = `I encountered an issue, but based on the analysis: This content is classified as ${result.classification.toUpperCase()} (${Math.round(result.confidence * 100)}% confidence). ${result.explanation?.substring(0, 200) || 'Please try asking your question again.'}`;
+      
       setChatMessages(prev => [
         ...prev,
         {
-          text: "Sorry, I couldn't process your question. Please try again.",
+          text: fallbackText,
           isUser: false,
           timestamp: new Date()
         }
@@ -74,10 +138,8 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result, contentPreview,
 
   const handleChatSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!chatInput.trim()) return;
     
-    // Add user message to chat
     const userMessage: ChatMessage = {
       text: chatInput,
       isUser: true,
@@ -85,67 +147,70 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result, contentPreview,
     };
     
     setChatMessages(prev => [...prev, userMessage]);
-    
-    // Send question to API
     chatbotMutation.mutate(chatInput);
-    
-    // Clear input
     setChatInput('');
   };
   
   const handleSuggestionClick = (suggestion: string) => {
     setChatInput(suggestion);
-    
-    // Focus the input after setting the value
     const inputElement = document.getElementById('chat-input');
-    if (inputElement) {
-      inputElement.focus();
-    }
+    inputElement?.focus();
   };
 
   const handleDownload = () => {
     setIsDownloading(true);
     
-    // Create report content
-    const reportContent = `
-    # TruthLens Analysis Report
-    
-    ## Content Analyzed
-    ${contentPreview}
-    
-    ## Classification
-    ${result.classification.toUpperCase()} (${Math.round(result.confidence * 100)}% confidence)
-    
-    ## Reasoning
-    ${result.reasoning.map(r => `- ${r}`).join('\n')}
-    
-    ## Source Credibility
-    Source: ${result.sourceCredibility.name}
-    Trust Score: ${Math.round(result.sourceCredibility.score * 100)}%
-    Level: ${result.sourceCredibility.level.toUpperCase()}
-    
-    ## Sentiment Analysis
-    Emotional Tone: ${result.sentiment.emotionalTone} (${Math.round(result.sentiment.emotionalToneScore * 100)}%)
-    Language Style: ${result.sentiment.languageStyle} (${Math.round(result.sentiment.languageStyleScore * 100)}%)
-    Political Leaning: ${result.sentiment.politicalLeaning} (${Math.round(result.sentiment.politicalLeaningScore * 100)}%)
-    
-    ## Fact Checks
-    ${result.factChecks.map(fc => `- ${fc.source}: ${fc.title}\n  ${fc.snippet}\n  URL: ${fc.url}`).join('\n\n') || 'No specific fact checks found for this content.'}
-    
-    --- 
-    Generated by TruthLens on ${new Date().toLocaleString()}
-    `;
-    
-    // Create and download the file
-    const blob = new Blob([reportContent], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `truthlens-report-${new Date().getTime()}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    try {
+      // Generate beautiful PDF report
+      generatePDFReport(result, contentPreview);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      // Fallback to text download if PDF generation fails
+      const reportContent = `
+# TruthLens Analysis Report
+
+## Content Analyzed
+${contentPreview}
+
+## Classification
+${result.classification.toUpperCase()} (${Math.round(result.confidence * 100)}% confidence)
+
+## Explanation
+${result.explanation || 'No explanation provided'}
+
+## Key Patterns Detected
+- Sensationalist Language: ${result.patterns.sensationalist.toFixed(2)}
+- Unreliable Sources: ${result.patterns.unreliableSource.toFixed(2)}
+- Unverified Claims: ${result.patterns.unverifiedClaims.toFixed(2)}
+
+## Source Credibility
+Source: ${result.sourceCredibility?.name || 'Unknown'}
+Trust Score: ${Math.round((result.sourceCredibility?.score || 0) * 100)}%
+Level: ${result.sourceCredibility?.level?.toUpperCase() || 'UNKNOWN'}
+
+## Sentiment Analysis
+Emotional Tone: ${result.sentiment?.emotionalTone || 'N/A'} (${Math.round((result.sentiment?.emotionalToneScore || 0) * 100)}%)
+Language Style: ${result.sentiment?.languageStyle || 'N/A'} (${Math.round((result.sentiment?.languageStyleScore || 0) * 100)}%)
+Political Leaning: ${result.sentiment?.politicalLeaning || 'N/A'} (${Math.round((result.sentiment?.politicalLeaningScore || 0) * 100)}%)
+
+## Fact Checks
+${result.factChecks?.length ? 
+  result.factChecks.map(fc => `- ${fc.source}: ${fc.title}\n  ${fc.snippet}\n  URL: ${fc.url}`).join('\n\n') : 'No fact checks available'}
+
+--- 
+Generated by TruthLens on ${new Date().toLocaleString()}
+      `;
+      
+      const blob = new Blob([reportContent], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `truthlens-report-${new Date().getTime()}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
     
     setIsDownloading(false);
   };
@@ -153,7 +218,6 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result, contentPreview,
   return (
     <section className="mb-16">
       <div className="max-w-4xl mx-auto">
-        {/* Specialized chatbot for this analysis result */}
         <ChatbotFloating analysisResult={result} contentPreview={contentPreview} isResultsPage={true} />
         
         <Card className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-md rounded-xl overflow-hidden shadow-lg border border-gray-200/50 dark:border-gray-700/50">
@@ -191,67 +255,87 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result, contentPreview,
                 <h4 className="text-lg font-medium">Credibility Assessment</h4>
                 <div className="flex items-center space-x-1">
                   <span className={`text-sm font-semibold ${getClassificationColor(result.classification)}`}>
-                    {result.classification.toUpperCase()}
+                    {result.confidence === 0 ? 'NOT APPLICABLE' : result.classification.toUpperCase()}
                   </span>
-                  <div className="w-24 h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full ${getClassificationBgColor(result.classification)} transition-all duration-500`}
-                      style={{ width: `${result.confidence * 100}%` }}
-                    ></div>
-                  </div>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
-                    {Math.round(result.confidence * 100)}%
-                  </span>
+                  {result.confidence > 0 && (
+                    <>
+                      <div className="w-24 h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full ${getClassificationBgColor(result.classification)} transition-all duration-500`}
+                          style={{ width: `${result.confidence * 100}%` }}
+                        ></div>
+                      </div>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {Math.round(result.confidence * 100)}%
+                      </span>
+                    </>
+                  )}
+                  {result.confidence === 0 && (
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      N/A
+                    </span>
+                  )}
                 </div>
               </div>
               
               <div className={`p-4 ${
-                result.classification === 'fake' 
-                  ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800' 
-                  : result.classification === 'misleading'
-                    ? 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800'
-                    : 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
+                result.confidence === 0
+                  ? 'bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700'
+                  : result.classification === 'fake' 
+                    ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800' 
+                    : result.classification === 'misleading'
+                      ? 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800'
+                      : 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
               } rounded-lg mb-6`}>
                 <div className="flex">
                   <div className="flex-shrink-0">
                     <AlertCircle className={`
-                      ${result.classification === 'fake' 
-                        ? 'text-red-600 dark:text-red-400' 
-                        : result.classification === 'misleading'
-                          ? 'text-yellow-600 dark:text-yellow-400'
-                          : 'text-green-600 dark:text-green-400'
+                      ${result.confidence === 0
+                        ? 'text-gray-600 dark:text-gray-400'
+                        : result.classification === 'fake' 
+                          ? 'text-red-600 dark:text-red-400' 
+                          : result.classification === 'misleading'
+                            ? 'text-yellow-600 dark:text-yellow-400'
+                            : 'text-green-600 dark:text-green-400'
                       } h-5 w-5 mt-0.5
                     `} />
                   </div>
                   <div className="ml-3">
                     <h3 className={`text-sm font-medium ${
-                      result.classification === 'fake' 
-                        ? 'text-red-800 dark:text-red-300' 
-                        : result.classification === 'misleading'
-                          ? 'text-yellow-800 dark:text-yellow-300'
-                          : 'text-green-800 dark:text-green-300'
+                      result.confidence === 0
+                        ? 'text-gray-800 dark:text-gray-300'
+                        : result.classification === 'fake' 
+                          ? 'text-red-800 dark:text-red-300' 
+                          : result.classification === 'misleading'
+                            ? 'text-yellow-800 dark:text-yellow-300'
+                            : 'text-green-800 dark:text-green-300'
                     }`}>
-                      {result.classification === 'fake' 
-                        ? 'This content contains false information' 
-                        : result.classification === 'misleading'
-                          ? 'This content may be misleading'
-                          : 'This content appears to be reliable'
+                      {result.confidence === 0
+                        ? 'Fake News Detection Not Applicable'
+                        : result.classification === 'fake' 
+                          ? 'This content contains false information' 
+                          : result.classification === 'misleading'
+                            ? 'This content may be misleading'
+                            : 'This content appears to be reliable'
                       }
                     </h3>
                     <div className={`mt-2 text-sm ${
-                      result.classification === 'fake' 
-                        ? 'text-red-700 dark:text-red-300' 
-                        : result.classification === 'misleading'
-                          ? 'text-yellow-700 dark:text-yellow-300'
-                          : 'text-green-700 dark:text-green-300'
+                      result.confidence === 0
+                        ? 'text-gray-700 dark:text-gray-300'
+                        : result.classification === 'fake' 
+                          ? 'text-red-700 dark:text-red-300' 
+                          : result.classification === 'misleading'
+                            ? 'text-yellow-700 dark:text-yellow-300'
+                            : 'text-green-700 dark:text-green-300'
                     }`}>
                       <p>
-                        {result.classification === 'fake' 
-                          ? 'Our AI detected multiple misleading claims without credible sources. The content uses sensationalist language and unverified information.' 
-                          : result.classification === 'misleading'
-                            ? 'This content contains some potentially misleading elements or exaggerations, though not entirely false. Verify with additional sources.'
-                            : 'This content appears to be based on credible information and presents a balanced view of the topic.'
-                        }
+                        {result.explanation || (
+                          result.classification === 'fake' 
+                            ? 'Our AI detected multiple misleading claims without credible sources. The content uses sensationalist language and unverified information.' 
+                            : result.classification === 'misleading'
+                              ? 'This content contains some potentially misleading elements or exaggerations, though not entirely false. Verify with additional sources.'
+                              : 'This content appears to be based on credible information and presents a balanced view of the topic.'
+                        )}
                       </p>
                     </div>
                   </div>
@@ -271,27 +355,38 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result, contentPreview,
                   </div>
                   <CollapsibleContent>
                     <div className="p-4 bg-white dark:bg-gray-800">
-                      <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
-                        {result.reasoning.map((reason, index) => (
-                          <li key={index} className="flex items-start">
-                            <span className={`inline-flex shrink-0 mr-2 mt-1 h-4 w-4 items-center justify-center rounded-full ${
-                              result.classification === 'fake' 
-                                ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' 
-                                : result.classification === 'misleading'
-                                  ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400'
-                                  : 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
-                            }`}>
-                              <AlertCircle className="h-3 w-3" />
-                            </span>
-                            <span>{reason}</span>
-                          </li>
-                        ))}
-                      </ul>
+                      {result.explanation ? (
+                        <p className="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap">
+                          {result.explanation}
+                        </p>
+                      ) : result.reasoning && result.reasoning.length > 0 ? (
+                        <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                          {result.reasoning.map((reason, index) => (
+                            <li key={index} className="flex items-start">
+                              <span className={`inline-flex shrink-0 mr-2 mt-1 h-4 w-4 items-center justify-center rounded-full ${
+                                result.classification === 'fake' 
+                                  ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' 
+                                  : result.classification === 'misleading'
+                                    ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400'
+                                    : 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
+                              }`}>
+                                <AlertCircle className="h-3 w-3" />
+                              </span>
+                              <span>{reason}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          No reasoning provided.
+                        </p>
+                      )}
                     </div>
                   </CollapsibleContent>
                 </Collapsible>
                 
-                {/* Source Credibility */}
+                {/* Source Credibility - Hide if not applicable or context-required */}
+                {result.confidence > 0 && result.explanation && !result.explanation.includes("Context-Dependent") && (
                 <Collapsible defaultOpen className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
                   <div className="bg-white dark:bg-gray-800 px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
                     <h5 className="font-medium text-sm">Source Credibility</h5>
@@ -304,40 +399,41 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result, contentPreview,
                   <CollapsibleContent>
                     <div className="p-4 bg-white dark:bg-gray-800">
                       <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center">
-                          <div className="w-5 h-5 mr-2 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center text-xs">
-                            {result.sourceCredibility.name.charAt(0).toUpperCase()}
+                          <div className="flex items-center">
+                            <div className="w-5 h-5 mr-2 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center text-xs">
+                              {(result.sourceCredibility?.name || '?').charAt(0).toUpperCase()}
+                            </div>
+                            <span className="text-sm font-medium">{result.sourceCredibility?.name || 'Unknown source'}</span>
                           </div>
-                          <span className="text-sm font-medium">{result.sourceCredibility.name}</span>
-                        </div>
                         <div className="flex items-center">
-                          <span className={`text-xs font-medium ${getCredibilityLevelColor(result.sourceCredibility.level)} mr-2`}>
-                            {result.sourceCredibility.level === 'high' ? 'HIGH TRUST' : 
-                             result.sourceCredibility.level === 'medium' ? 'MEDIUM TRUST' : 'LOW TRUST'}
+                            <span className={`text-xs font-medium ${getCredibilityLevelColor(result.sourceCredibility?.level || 'medium')} mr-2`}>
+                              {result.sourceCredibility?.level === 'high' ? 'HIGH TRUST' : 
+                               result.sourceCredibility?.level === 'medium' ? 'MEDIUM TRUST' : 'LOW TRUST'}
                           </span>
                           <div className="w-16 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                             <div 
                               className={`h-full ${
-                                result.sourceCredibility.level === 'high' ? 'bg-green-500' : 
-                                result.sourceCredibility.level === 'medium' ? 'bg-yellow-500' : 'bg-red-500'
+                                result.sourceCredibility?.level === 'high' ? 'bg-green-500' : 
+                                result.sourceCredibility?.level === 'medium' ? 'bg-yellow-500' : 'bg-red-500'
                               }`}
-                              style={{ width: `${result.sourceCredibility.score * 100}%` }}
                             ></div>
                           </div>
                         </div>
                       </div>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {result.sourceCredibility.level === 'high' 
+                        {result.sourceCredibility?.level === 'high' 
                           ? 'This source generally provides reliable information and follows journalistic standards.' 
-                          : result.sourceCredibility.level === 'medium' 
+                          : result.sourceCredibility?.level === 'medium' 
                             ? 'This source has mixed reliability. Verify important claims with additional sources.' 
                             : 'This source has a history of publishing unverified claims or misinformation.'}
                       </p>
                     </div>
                   </CollapsibleContent>
                 </Collapsible>
+                )}
                 
-                {/* Fact Checks */}
+                {/* Fact Checks - Hide if not applicable */}
+                {result.confidence > 0 && (
                 <Collapsible defaultOpen className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
                   <div className="bg-white dark:bg-gray-800 px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
                     <h5 className="font-medium text-sm">Fact Checks</h5>
@@ -349,7 +445,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result, contentPreview,
                   </div>
                   <CollapsibleContent>
                     <div className="p-4 bg-white dark:bg-gray-800">
-                      {result.factChecks.length > 0 ? (
+                      {result.factChecks?.length ? (
                         <div className="space-y-3">
                           {result.factChecks.map((factCheck, index) => (
                             <div key={index} className="p-3 rounded-lg border border-gray-200 dark:border-gray-700">
@@ -381,7 +477,10 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result, contentPreview,
                   </CollapsibleContent>
                 </Collapsible>
                 
-                {/* Sentiment & Bias Analysis */}
+                )}
+                
+                {/* Sentiment & Bias Analysis - Hide if not applicable */}
+                {result.confidence > 0 && (
                 <Collapsible defaultOpen className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
                   <div className="bg-white dark:bg-gray-800 px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
                     <h5 className="font-medium text-sm">Sentiment & Bias Analysis</h5>
@@ -397,13 +496,13 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result, contentPreview,
                         <div className="w-full sm:w-1/3">
                           <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Emotional Tone</p>
                           <div className="flex items-center">
-                            <span className={`text-sm font-medium ${getSentimentColor(result.sentiment.emotionalTone, result.sentiment.emotionalToneScore)} mr-2`}>
-                              {result.sentiment.emotionalTone}
+                            <span className={`text-sm font-medium ${getSentimentColor(result.sentiment?.emotionalTone, result.sentiment?.emotionalToneScore)} mr-2`}>
+                              {result.sentiment?.emotionalTone || 'N/A'}
                             </span>
                             <div className="flex-grow h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                               <div 
-                                className={`h-full ${getSentimentColor(result.sentiment.emotionalTone, result.sentiment.emotionalToneScore).replace('text-', 'bg-')}`}
-                                style={{ width: `${result.sentiment.emotionalToneScore * 100}%` }}
+                                className={`h-full ${getSentimentColor(result.sentiment?.emotionalTone, result.sentiment?.emotionalToneScore).replace('text-', 'bg-')}`}
+                                style={{ width: `${(result.sentiment?.emotionalToneScore || 0) * 100}%` }}
                               ></div>
                             </div>
                           </div>
@@ -411,13 +510,13 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result, contentPreview,
                         <div className="w-full sm:w-1/3">
                           <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Language Style</p>
                           <div className="flex items-center">
-                            <span className={`text-sm font-medium ${getSentimentColor(result.sentiment.languageStyle, result.sentiment.languageStyleScore)} mr-2`}>
-                              {result.sentiment.languageStyle}
+                            <span className={`text-sm font-medium ${getSentimentColor(result.sentiment?.languageStyle, result.sentiment?.languageStyleScore)} mr-2`}>
+                              {result.sentiment?.languageStyle || 'N/A'}
                             </span>
                             <div className="flex-grow h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                               <div 
-                                className={`h-full ${getSentimentColor(result.sentiment.languageStyle, result.sentiment.languageStyleScore).replace('text-', 'bg-')}`}
-                                style={{ width: `${result.sentiment.languageStyleScore * 100}%` }}
+                                className={`h-full ${getSentimentColor(result.sentiment?.languageStyle, result.sentiment?.languageStyleScore).replace('text-', 'bg-')}`}
+                                style={{ width: `${(result.sentiment?.languageStyleScore || 0) * 100}%` }}
                               ></div>
                             </div>
                           </div>
@@ -426,12 +525,12 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result, contentPreview,
                           <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Political Leaning</p>
                           <div className="flex items-center">
                             <span className="text-sm font-medium text-gray-600 dark:text-gray-300 mr-2">
-                              {result.sentiment.politicalLeaning}
+                              {result.sentiment?.politicalLeaning || 'N/A'}
                             </span>
                             <div className="flex-grow h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                               <div 
                                 className="h-full bg-gray-400"
-                                style={{ width: `${result.sentiment.politicalLeaningScore * 100}%` }}
+                                style={{ width: `${(result.sentiment?.politicalLeaningScore || 0) * 100}%` }}
                               ></div>
                             </div>
                           </div>
@@ -439,15 +538,16 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result, contentPreview,
                       </div>
                       
                       <p className="text-xs text-gray-600 dark:text-gray-300 mt-4">
-                        {result.sentiment.emotionalTone === 'Fear-inducing' || result.sentiment.languageStyle === 'Sensationalist' 
+                        {result.sentiment?.emotionalTone === 'Fear-inducing' || result.sentiment?.languageStyle === 'Sensationalist' 
                           ? 'This content uses emotionally charged language designed to provoke strong reactions. It contains sensationalist phrases and emotional triggers that may influence judgment.'
-                          : result.sentiment.emotionalTone === 'Emotional' || result.sentiment.languageStyle === 'Slightly sensationalist'
+                          : result.sentiment?.emotionalTone === 'Emotional' || result.sentiment?.languageStyle === 'Slightly sensationalist'
                             ? 'This content uses somewhat emotional language that may influence reader perception. Be aware of how tone affects the presentation of facts.'
                             : 'This content uses mostly neutral language and presents information in a balanced way without excessive emotional appeals.'}
                       </p>
                     </div>
                   </CollapsibleContent>
                 </Collapsible>
+                )}
 
                 {/* AI-Powered Summary (NEW) */}
                 {result.summary && (
@@ -726,23 +826,16 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result, contentPreview,
                   onClick={() => {
                     if (navigator.share) {
                       navigator.share({
-                        title: 'TruthLens Analysis Report',
-                        text: `TruthLens classified this content as ${result.classification.toUpperCase()} with ${Math.round(result.confidence * 100)}% confidence.`,
-                        url: window.location.href,
-                      });
+                        title: 'TruthLens Analysis',
+                        text: `This content was analyzed as ${result.classification.toUpperCase()} with ${Math.round(result.confidence * 100)}% confidence`,
+                        url: window.location.href
+                      }).catch(console.error);
                     }
                   }}
                 >
                   <Share className="mr-2 h-4 w-4" /> Share
                 </Button>
               </div>
-              <Button
-                size="sm"
-                className="rounded-lg"
-                onClick={onReset}
-              >
-                <Search className="mr-2 h-4 w-4" /> Analyze Another
-              </Button>
             </div>
           </div>
         </Card>

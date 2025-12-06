@@ -54,10 +54,19 @@ export async function analyzeContent(request: AnalysisRequest): Promise<Analysis
       }
       
       // Make request with FormData
-      const response = await fetch(endpoint, {
+      // Note: Don't set Content-Type header for FormData - browser will set it with boundary
+      // Always use relative URLs - server and client are on the same port
+      // This avoids issues with VITE_API_URL pointing to wrong port (e.g., 3000)
+      const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+      
+      console.log(`[ANALYSIS] Uploading file to: ${normalizedEndpoint}, file type: ${request.file.type}, size: ${request.file.size}`);
+      console.log(`[ANALYSIS] Current origin: ${window.location.origin}`);
+      
+      const response = await fetch(normalizedEndpoint, {
         method: 'POST',
         body: formData,
         credentials: 'include',
+        // Don't set Content-Type header - browser will set it automatically with the correct boundary
       });
       
       if (!response.ok) {

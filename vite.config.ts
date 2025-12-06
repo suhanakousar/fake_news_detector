@@ -26,6 +26,15 @@ export default defineConfig({
     },
   },
   root: path.resolve(import.meta.dirname, "client"),
+  server: {
+    host: true,
+    port: 5002,
+    strictPort: false,
+    hmr: {
+      host: 'localhost',
+      port: 5002,
+    },
+  },
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,

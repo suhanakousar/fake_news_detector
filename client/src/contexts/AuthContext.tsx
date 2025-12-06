@@ -36,16 +36,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Listen for Firebase auth state changes
+    // Check if user is already logged in via session
+    const checkSession = async () => {
+      try {
+        const response = await apiRequest('GET', '/api/auth/me', undefined);
+        if (response.ok) {
+          const userData = await response.json();
+          setUser(userData);
+        }
+      } catch (error) {
+        // No active session, user is not logged in
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    // Also listen for Firebase auth state changes (for social logins)
     const unsubscribe = onAuthChange((firebaseUserResult) => {
       setFirebaseUser(firebaseUserResult);
-      setLoading(false);
       
       if (firebaseUserResult) {
         // If Firebase user exists, sync with our backend
         syncUserWithBackend(firebaseUserResult);
       }
     });
+    
+    checkSession();
     
     return () => unsubscribe();
   }, []);
@@ -74,15 +91,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setLoading(true);
       
-      // Register with Firebase
-      const firebaseUser = await registerWithEmailPassword(email, password, username);
-      
-      // Backend will be updated via the Firebase auth state change listener
-      
-      toast({
-        title: "Registration successful!",
-        description: "Welcome to TruthLens!",
+      // Use backend register endpoint
+      const response = await apiRequest('POST', '/api/auth/register', {
+        username,
+        email,
+        password
       });
+      
+      if (response.ok) {
+        const userData = await response.json();
+        setUser(userData);
+        
+        toast({
+          title: "Registration successful!",
+          description: "Welcome to TruthLens!",
+        });
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Registration failed');
+      }
     } catch (error: any) {
       console.error('Registration error:', error);
       toast({
@@ -100,15 +127,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setLoading(true);
       
-      // We use email as username for simplicity in this integration
-      await loginWithEmailPassword(username, password);
-      
-      // Backend will be updated via the Firebase auth state change listener
-      
-      toast({
-        title: "Login successful!",
-        description: `Welcome back!`,
+      // Use backend login endpoint for username/password authentication
+      const response = await apiRequest('POST', '/api/auth/login', {
+        username,
+        password
       });
+      
+      if (response.ok) {
+        const userData = await response.json();
+        setUser(userData);
+        
+        toast({
+          title: "Login successful!",
+          description: `Welcome back!`,
+        });
+      } else {
+        throw new Error('Invalid credentials');
+      }
     } catch (error: any) {
       console.error('Login error:', error);
       toast({

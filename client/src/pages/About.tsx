@@ -39,6 +39,15 @@ const About: React.FC = () => {
       <Header />
       
       <main className="flex-grow container mx-auto px-4 py-8">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => window.history.back()}
+          className="mb-4"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back
+        </Button>
         {/* Hero Section */}
         <motion.section 
           className="mb-16 text-center"

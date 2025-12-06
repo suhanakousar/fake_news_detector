@@ -255,8 +255,8 @@ const ChatbotFloating: React.FC<ChatbotFloatingProps> = ({
               theme === 'dark' ? 'bg-gray-800' : 'bg-white'
             }`}
           >
-            {/* Chat Header */}
-            <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-primary/10">
+            {/* Chat Header - Fixed at the top */}
+            <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-primary/5 sticky top-0 z-10">
               <div className="flex items-center cursor-pointer" onClick={maximizeChat}>
                 <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center mr-2">
                   <MessageSquare className="h-4 w-4 text-white" />
@@ -272,12 +272,12 @@ const ChatbotFloating: React.FC<ChatbotFloatingProps> = ({
                   )}
                 </div>
               </div>
-              <div className="flex items-center">
+              <div className="flex items-center space-x-1">
                 {!isMinimized && (
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-7 w-7" 
+                    className="h-7 w-7 hover:bg-gray-100 dark:hover:bg-gray-700" 
                     onClick={minimizeChat}
                   >
                     <MinusSquare className="h-4 w-4" />
@@ -286,7 +286,7 @@ const ChatbotFloating: React.FC<ChatbotFloatingProps> = ({
                 <Button 
                   variant="ghost" 
                   size="icon"
-                  className="h-7 w-7 ml-1" 
+                  className="h-7 w-7 hover:bg-gray-100 dark:hover:bg-gray-700" 
                   onClick={closeChat}
                 >
                   <X className="h-4 w-4" />
@@ -296,36 +296,33 @@ const ChatbotFloating: React.FC<ChatbotFloatingProps> = ({
             
             {/* Chat Content - Only shown when not minimized */}
             {!isMinimized && (
-              <>
-                {/* Messages Area */}
-                <div className="p-3 h-[380px] overflow-y-auto bg-gray-50 dark:bg-gray-900/50">
-                  <div className="space-y-3">
+              <div className="flex flex-col h-[calc(500px-56px)]">
+                {/* Messages Area - Scrollable */}
+                <div className="flex-1 p-3 overflow-y-auto bg-gray-50/50 dark:bg-gray-900/30">
+                  <div className="space-y-4">
                     {chatMessages.map((message, index) => (
                       <motion.div 
                         key={index} 
-                        className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
+                        className={`flex ${message.isUser ? 'justify-end' : 'justify-start'} px-1`}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.2 }}
                       >
                         <div 
-                          className={`max-w-[80%] p-3 rounded-lg shadow-sm ${
+                          className={`max-w-[85%] p-3 rounded-2xl shadow-sm ${
                             message.isUser 
                               ? 'bg-primary text-white rounded-br-none' 
-                              : 'bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-bl-none'
+                              : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-bl-none'
                           }`}
                         >
                           {/* Message Content */}
                           <p className="text-sm whitespace-pre-wrap leading-relaxed">
-                            {/* Simple markdown-style formatting */}
                             {message.text.split('\n').map((line, i) => {
-                              // Bold text (**text**)
                               const boldText = line.replace(
                                 /\*\*(.*?)\*\*/g, 
                                 '<strong>$1</strong>'
                               );
                               
-                              // Italic text (*text*)
                               const formattedText = boldText.replace(
                                 /\*(.*?)\*/g, 
                                 '<em>$1</em>'
@@ -345,7 +342,7 @@ const ChatbotFloating: React.FC<ChatbotFloatingProps> = ({
                           {!message.isUser && index > 0 && index % 2 === 0 && (
                             <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
                               <details className="text-xs">
-                                <summary className="cursor-pointer text-gray-500 dark:text-gray-400 font-medium">
+                                <summary className="cursor-pointer text-gray-500 dark:text-gray-400 font-medium hover:text-gray-700 dark:hover:text-gray-300">
                                   Sources
                                 </summary>
                                 <ul className="mt-1 pl-3 space-y-1 list-disc">
@@ -384,12 +381,12 @@ const ChatbotFloating: React.FC<ChatbotFloatingProps> = ({
                     
                     {chatbotMutation.isPending && (
                       <motion.div 
-                        className="flex justify-start"
+                        className="flex justify-start px-1"
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.2 }}
                       >
-                        <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 max-w-[80%] rounded-bl-none">
+                        <div className="bg-white dark:bg-gray-800 p-3 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 max-w-[85%] rounded-bl-none">
                           <div className="flex items-center space-x-3">
                             <span className="text-sm text-gray-500 dark:text-gray-400 flex">
                               <span className="w-1.5 h-1.5 bg-primary rounded-full mr-1 animate-pulse"></span>
@@ -415,7 +412,7 @@ const ChatbotFloating: React.FC<ChatbotFloatingProps> = ({
                         <button
                           key={index}
                           onClick={() => handleSuggestionClick(suggestion)}
-                          className="text-xs px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                          className="text-xs px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                         >
                           {suggestion}
                         </button>
@@ -424,8 +421,8 @@ const ChatbotFloating: React.FC<ChatbotFloatingProps> = ({
                   </div>
                 )}
                 
-                {/* Input Area */}
-                <div className="p-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                {/* Input Area - Fixed at the bottom */}
+                <div className="p-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 sticky bottom-0 z-10">
                   {/* Action buttons bar */}
                   <div className="flex mb-2 gap-1 justify-end">
                     <Button
@@ -447,7 +444,7 @@ const ChatbotFloating: React.FC<ChatbotFloatingProps> = ({
                       value={chatInput}
                       onChange={(e) => setChatInput(e.target.value)}
                       placeholder="Ask me anything about this news..." 
-                      className="w-full py-2 px-10 pr-12 rounded-full border border-gray-300 dark:border-gray-600 text-sm bg-white dark:bg-gray-800 focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                      className="w-full py-2.5 px-10 pr-12 rounded-full border border-gray-300 dark:border-gray-600 text-sm bg-white dark:bg-gray-800 focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                       disabled={chatbotMutation.isPending}
                     />
                     
@@ -467,7 +464,7 @@ const ChatbotFloating: React.FC<ChatbotFloatingProps> = ({
                     <button 
                       type="submit"
                       disabled={chatbotMutation.isPending || !chatInput.trim()}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-primary hover:text-primary/80"
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-primary hover:text-primary/80 disabled:opacity-50"
                     >
                       <Send className="h-4 w-4" />
                     </button>
@@ -480,7 +477,7 @@ const ChatbotFloating: React.FC<ChatbotFloatingProps> = ({
                     </p>
                   </div>
                 </div>
-              </>
+              </div>
             )}
           </motion.div>
         )}

@@ -1,33 +1,41 @@
 import { AnalysisResult } from '@shared/schema';
 import axios from 'axios';
 
-// Hugging Face API configuration
-const HUGGINGFACE_API_KEY = process.env.HUGGINGFACE_API_KEY;
-
-// Model endpoints
-const SUMMARY_MODEL_API = "https://api-inference.huggingface.co/models/facebook/bart-large-cnn";
-const FAKE_NEWS_CLASSIFIER_API = "https://api-inference.huggingface.co/models/MoritzLaurer/DeBERTa-v3-large-mnli-fever-anli-ling-wanli";
-const TEXT_GENERATION_API = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2";
-
-// Headers for Hugging Face API requests
-const headers = {
-  "Authorization": `Bearer ${HUGGINGFACE_API_KEY}`,
-  "Content-Type": "application/json"
-};
+// Gemini API configuration
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.HUGGINGFACE_API_KEY; // Support both for backward compatibility
+const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
 
 /**
- * Helper function to query Hugging Face API
+ * Helper function to query Gemini API
  */
-async function queryHuggingFaceAPI(apiUrl: string, payload: any) {
+async function queryGeminiAPI(prompt: string) {
   try {
-    const response = await axios.post(apiUrl, payload, { headers });
+    if (!GEMINI_API_KEY) {
+      throw new Error('Gemini API key not found');
+    }
+    
+    const response = await axios.post(
+      `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`,
+      {
+        contents: [{
+          parts: [{
+            text: prompt
+          }]
+        }]
+      },
+      {
+        headers: {
+          "Content-Type": "application/json"
+        }
+      }
+    );
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error) && error.response?.status === 503) {
-      // Model is loading, retry after a delay
-      console.log(`Model is loading, waiting to retry...`);
+      // Service temporarily unavailable, retry after a delay
+      console.log(`Gemini API is temporarily unavailable, waiting to retry...`);
       await new Promise(resolve => setTimeout(resolve, 5000));
-      return queryHuggingFaceAPI(apiUrl, payload);
+      return queryGeminiAPI(prompt);
     }
     throw error;
   }
@@ -40,8 +48,8 @@ async function queryHuggingFaceAPI(apiUrl: string, payload: any) {
  * @returns A concise summary of the article
  */
 export async function generateArticleSummary(text: string, language: string = 'en'): Promise<string | null> {
-  if (!HUGGINGFACE_API_KEY) {
-    console.log('Hugging Face API key not available, skipping article summarization');
+  if (!GEMINI_API_KEY) {
+    console.log('Gemini API key not available, skipping article summarization');
     return null;
   }
 
@@ -49,26 +57,16 @@ export async function generateArticleSummary(text: string, language: string = 'e
     // Truncate text if it's too long for the model
     const truncatedText = text.length > 3000 ? text.substring(0, 3000) + '...' : text;
     
-    const payload = {
-      inputs: truncatedText,
-      parameters: {
-        max_length: 150,
-        min_length: 40,
-        do_sample: false
-      }
-    };
+    const prompt = `Summarize the following article in 2-3 sentences (40-150 words). Focus on the main points:
+
+${truncatedText}
+
+Summary:`;
     
-    const summaryResponse = await queryHuggingFaceAPI(SUMMARY_MODEL_API, payload);
+    const summaryResponse = await queryGeminiAPI(prompt);
     
-    if (Array.isArray(summaryResponse) && summaryResponse.length > 0) {
-      // Handle array response format
-      return summaryResponse[0].summary_text;
-    } else if (summaryResponse.summary_text) {
-      // Handle object response format
-      return summaryResponse.summary_text;
-    }
-    
-    return null;
+    const summaryText = summaryResponse.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    return summaryText || null;
   } catch (error) {
     console.error('Error generating article summary:', error);
     return null;
@@ -83,8 +81,8 @@ export async function generateArticleSummary(text: string, language: string = 'e
  * @returns Enhanced analysis result with XAI details
  */
 export async function generateXaiDetails(result: AnalysisResult, text: string, language: string = 'en'): Promise<AnalysisResult> {
-  if (!HUGGINGFACE_API_KEY) {
-    console.log('Hugging Face API key not available, skipping XAI enhancement');
+  if (!GEMINI_API_KEY) {
+    console.log('Gemini API key not available, skipping XAI enhancement');
     return result;
   }
 
@@ -92,28 +90,7 @@ export async function generateXaiDetails(result: AnalysisResult, text: string, l
     // Truncate text if it's too long for the model
     const truncatedText = text.length > 2500 ? text.substring(0, 2500) + '...' : text;
     
-    // First, let's use a natural language inference model to classify sentences
-    // For entailment/contradiction with statements about fake news
-    const statements = [
-      "This text contains factual information.",
-      "This text contains misinformation.",
-      "This text uses sensationalist language.",
-      "This text cites credible sources.",
-      "This text makes unsupported claims."
-    ];
-    
-    // Create pairs of text with each statement for classification
-    const pairs = statements.map(statement => ({
-      text: truncatedText.substring(0, 500), // Take first part of text
-      hypothesis: statement
-    }));
-    
-    // Get classification results
-    const classificationResults = await queryHuggingFaceAPI(FAKE_NEWS_CLASSIFIER_API, {
-      inputs: pairs
-    });
-    
-    // Extract key phrases using text generation model
+    // Extract key phrases using Gemini
     const generationPrompt = `
 You're analyzing ${result.classification} news content. Extract 3-5 key phrases that show why this is ${result.classification}, with impact scores (-1 to 1) and brief explanations.
 
@@ -128,19 +105,13 @@ Respond in valid JSON format only:
   ]
 }`;
 
-    const phrasesResponse = await queryHuggingFaceAPI(TEXT_GENERATION_API, {
-      inputs: generationPrompt,
-      parameters: {
-        max_new_tokens: 1000,
-        temperature: 0.3,
-        return_full_text: false
-      }
-    });
+    const phrasesResponse = await queryGeminiAPI(generationPrompt);
     
     let keyPhrases = [];
-    if (phrasesResponse && phrasesResponse[0] && phrasesResponse[0].generated_text) {
+    const phrasesText = phrasesResponse.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    if (phrasesText) {
       // Extract JSON from the generated text
-      const jsonMatch = phrasesResponse[0].generated_text.match(/\{[\s\S]*\}/);
+      const jsonMatch = phrasesText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         try {
           const phrasesData = JSON.parse(jsonMatch[0]);
@@ -153,7 +124,7 @@ Respond in valid JSON format only:
       }
     }
     
-    // Generate alternative sources and detection confidence using the text generation model
+    // Generate alternative sources and detection confidence using Gemini
     const detailsPrompt = `
 Based on this ${result.classification} news content, provide:
 1. Detection methods (2-3) with confidence scores (0-1) and one explanation
@@ -174,21 +145,15 @@ Respond in valid JSON format only:
   ]
 }`;
 
-    const detailsResponse = await queryHuggingFaceAPI(TEXT_GENERATION_API, {
-      inputs: detailsPrompt,
-      parameters: {
-        max_new_tokens: 1000,
-        temperature: 0.3,
-        return_full_text: false
-      }
-    });
+    const detailsResponse = await queryGeminiAPI(detailsPrompt);
     
     let detectionConfidence = [];
     let alternativeSources = [];
     
-    if (detailsResponse && detailsResponse[0] && detailsResponse[0].generated_text) {
+    const detailsText = detailsResponse.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    if (detailsText) {
       // Extract JSON from the generated text
-      const jsonMatch = detailsResponse[0].generated_text.match(/\{[\s\S]*\}/);
+      const jsonMatch = detailsText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         try {
           const detailsData = JSON.parse(jsonMatch[0]);
@@ -202,50 +167,6 @@ Respond in valid JSON format only:
           console.error('Error parsing details JSON:', error);
         }
       }
-    }
-    
-    // Define type for classification results
-    interface ClassificationResult {
-      label: string;
-      score: number;
-    }
-    
-    interface ClassificationInsight {
-      statement: string;
-      result: string;
-      confidence: number;
-    }
-    
-    // Process classification results to get insights
-    const classificationInsights = classificationResults ? 
-      classificationResults.map((classResult: ClassificationResult[], index: number) => {
-        if (!classResult || !Array.isArray(classResult)) return null;
-        
-        // Find the highest probability class (entailment, contradiction, neutral)
-        const maxProbClass = classResult.reduce(
-          (max: ClassificationResult, current: ClassificationResult) => 
-            current.score > max.score ? current : max, 
-          { label: "", score: 0 }
-        );
-        
-        return {
-          statement: statements[index],
-          result: maxProbClass.label,
-          confidence: maxProbClass.score
-        };
-      }).filter((insight: any): boolean => Boolean(insight)) as ClassificationInsight[] : [];
-    
-    // Use classification insights to create detection confidence if none were generated
-    if (detectionConfidence.length === 0 && classificationInsights.length > 0) {
-      detectionConfidence = classificationInsights.map((insight: ClassificationInsight) => ({
-        algorithm: `NLI Classification: "${insight.statement}"`,
-        score: insight.confidence,
-        explanation: `Natural Language Inference model determines if the content ${
-          insight.result === 'entailment' ? 'supports' : 
-          insight.result === 'contradiction' ? 'contradicts' : 
-          'is neutral toward'
-        } this statement.`
-      }));
     }
     
     // Construct XAI data

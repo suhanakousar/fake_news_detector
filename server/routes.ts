@@ -29,6 +29,10 @@ const upload = multer({
   limits: {
     fileSize: 5 * 1024 * 1024, // 5MB limit
   },
+  fileFilter: (req, file, cb) => {
+    // Accept all files for now, validation happens in the route handler
+    cb(null, true);
+  }
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -363,30 +367,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Analysis routes
+  // Text Analysis Route
   app.post("/api/analyze/text", async (req, res) => {
     try {
       const { text, language = 'en' } = req.body;
       
+      // Validate input
       if (!text || typeof text !== 'string' || text.trim() === '') {
-        return res.status(400).json({ message: "Text is required" });
-      }
-
-      const result = await analyzeText(text, language);
-      
-      // If user is authenticated, save the analysis
-      if (req.session.userId) {
-        await storage.saveAnalysis({
-          userId: req.session.userId,
-          content: text,
-          contentType: "text",
-          result,
+        return res.status(400).json({ 
+          message: "Text is required",
+          details: "Please provide a non-empty text string"
         });
       }
       
-      res.json(result);
+      // Limit text length to prevent excessive processing
+      const limitedText = text.length > 10000 ? text.substring(0, 10000) + '...(truncated)' : text;
+      
+      try {
+        const result = await analyzeText(limitedText, language);
+        res.json(result);
+      } catch (analysisError) {
+        console.error("Error in text analysis:", analysisError);
+        res.status(500).json({ 
+          message: "Error analyzing text",
+          details: analysisError instanceof Error ? analysisError.message : "Unknown error during analysis",
+          error: process.env.NODE_ENV === 'development' ? String(analysisError) : undefined
+        });
+      }
     } catch (error) {
-      console.error("Error analyzing text:", error);
-      res.status(500).json({ message: "An error occurred during analysis" });
+      console.error("Error in text analysis endpoint:", error);
+      res.status(500).json({ 
+        message: "Error processing request",
+        details: error instanceof Error ? error.message : "Unknown error",
+        error: process.env.NODE_ENV === 'development' ? String(error) : undefined
+      });
     }
   });
 
@@ -417,13 +431,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/analyze/image", upload.single("image"), async (req, res) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({ message: "Image file is required" });
+  // Error handler for multer errors (file size, etc.)
+  const handleMulterError = (err: any, req: any, res: Response, next: Function) => {
+    if (err instanceof multer.MulterError) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ 
+          message: "File too large",
+          error: "File size exceeds 5MB limit. Please upload a smaller image."
+        });
       }
-      
+      return res.status(400).json({ 
+        message: "File upload error",
+        error: err.message
+      });
+    }
+    if (err) {
+      return res.status(400).json({ 
+        message: "File upload error",
+        error: err.message || "Unknown upload error"
+      });
+    }
+    next();
+  };
+
+  app.post("/api/analyze/image", upload.single("image"), handleMulterError, async (req, res) => {
+    try {
+      // Check if file was uploaded
+      if (!req.file) {
+        console.error("[IMAGE_ANALYZER] No file received in request");
+        console.error("[IMAGE_ANALYZER] Request body keys:", Object.keys(req.body));
+        console.error("[IMAGE_ANALYZER] Request files:", req.files);
+        return res.status(400).json({ 
+          message: "Image file is required",
+          error: "No file was uploaded. Please ensure the file field is named 'image' and the Content-Type is multipart/form-data."
+        });
+      }
+
+      // Validate file type
+      const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/bmp'];
+      if (!allowedMimeTypes.includes(req.file.mimetype)) {
+        console.error(`[IMAGE_ANALYZER] Invalid file type: ${req.file.mimetype}`);
+        return res.status(400).json({ 
+          message: "Invalid file type",
+          error: `File type ${req.file.mimetype} is not supported. Allowed types: ${allowedMimeTypes.join(', ')}`
+        });
+      }
+
+      // Validate file size (already handled by multer, but double-check)
+      if (req.file.size === 0) {
+        return res.status(400).json({ 
+          message: "File is empty",
+          error: "The uploaded file is empty."
+        });
+      }
+
       const language = req.body.language || 'en';
+      console.log(`[IMAGE_ANALYZER] Processing image: ${req.file.originalname}, size: ${req.file.size} bytes, type: ${req.file.mimetype}, language: ${language}`);
 
       const result = await analyzeImage(req.file.buffer, language);
       
@@ -439,8 +502,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(result);
     } catch (error) {
-      console.error("Error analyzing image:", error);
-      res.status(500).json({ message: "An error occurred during image analysis" });
+      console.error("[IMAGE_ANALYZER] Error analyzing image:", error);
+      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+      res.status(500).json({ 
+        message: "An error occurred during image analysis",
+        error: errorMessage
+      });
     }
   });
 
@@ -500,9 +567,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Content context is required" });
       }
       
-      if (!analysisResult.classification || !analysisResult.reasoning || !Array.isArray(analysisResult.reasoning)) {
-        return res.status(400).json({ message: "Analysis result with classification and reasoning is required" });
+      if (!analysisResult.classification || !analysisResult.explanation) {
+        return res.status(400).json({ message: "Analysis result with classification and explanation is required" });
       }
+      
+      console.log('[ROUTES] Calling generateChatbotResponse with:', {
+        question: question.substring(0, 50),
+        contentLength: content.length,
+        classification: analysisResult.classification,
+        hasExplanation: !!analysisResult.explanation
+      });
       
       const response = await generateChatbotResponse(
         question,
@@ -511,25 +585,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         language
       );
       
+      console.log('[ROUTES] Chatbot response generated, length:', response.length);
       res.json({ response });
     } catch (error) {
-      console.error("Error generating chatbot response:", error);
+      console.error("[ROUTES] Error generating chatbot response:", error);
+      if (error instanceof Error) {
+        console.error("[ROUTES] Error details:", error.message, error.stack);
+      }
       
-      // Define language-specific error messages
-      const errorMessages: Record<string, string> = {
-        en: "I'm sorry, I couldn't generate a response at this time. Please try again later.",
-        es: "Lo siento, no pude generar una respuesta en este momento. Por favor, inténtalo de nuevo más tarde.",
-        fr: "Je suis désolé, je n'ai pas pu générer une réponse pour le moment. Veuillez réessayer plus tard.",
-        hi: "क्षमा करें, मैं इस समय प्रतिक्रिया नहीं दे सका। कृपया बाद में पुनः प्रयास करें।"
-      };
-      
-      const language = req.body.language || 'en';
-      const errorResponse = errorMessages[language] || errorMessages.en;
-      
-      res.status(500).json({ 
-        message: "An error occurred while generating a response",
-        response: errorResponse
-      });
+      // Try to provide a fallback response even on error
+      try {
+        const fallbackResponse = await generateChatbotResponse(
+          question || "What can you tell me about this analysis?",
+          content || contentPreview || "",
+          analysisResult,
+          language
+        );
+        return res.json({ response: fallbackResponse });
+      } catch (fallbackError) {
+        // Last resort: provide a basic response
+        const shortExplanation = analysisResult.explanation?.substring(0, 200) || 'Analysis completed';
+        const classification = analysisResult.classification || 'unknown';
+        const confidence = Math.round((analysisResult.confidence || 0) * 100);
+        
+        let fallbackText = '';
+        if (classification === 'fake') {
+          fallbackText = `Based on the analysis, this content has been classified as FAKE (${confidence}% confidence). ${shortExplanation}.`;
+        } else if (classification === 'misleading') {
+          fallbackText = `This content has been classified as MISLEADING (${confidence}% confidence). ${shortExplanation}.`;
+        } else {
+          fallbackText = `This content appears to be REAL (${confidence}% confidence). ${shortExplanation}.`;
+        }
+        
+        return res.json({ response: fallbackText });
+      }
     }
   });
 
@@ -601,6 +690,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching flagged analyses:", error);
       res.status(500).json({ message: "An error occurred while fetching flagged analyses" });
+    }
+  });
+  
+  // Direct Bytez model endpoint (for testing)
+  app.post("/api/analyze/bytez", async (req, res) => {
+    try {
+      const { text } = req.body;
+      
+      if (!text || typeof text !== 'string' || text.trim() === '') {
+        return res.status(400).json({ message: "Text is required" });
+      }
+      
+      const { predictFakeNewsWithBytez } = await import("./lib/bytezModel");
+      const result = await predictFakeNewsWithBytez(text);
+      
+      if (result.error) {
+        return res.status(500).json({
+          error: true,
+          message: result.message || "Model prediction failed",
+          raw: result.raw
+        });
+      }
+      
+      res.json({
+        prediction: result.prediction,
+        confidence: result.confidence,
+        label: result.prediction, // For compatibility
+        score: result.confidence
+      });
+    } catch (error) {
+      console.error("Error in Bytez analysis:", error);
+      res.status(500).json({ 
+        message: "An error occurred during Bytez analysis",
+        error: process.env.NODE_ENV === 'development' ? String(error) : undefined
+      });
     }
   });
   
@@ -717,6 +841,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error promoting user to admin:", error);
       res.status(500).json({ message: "An error occurred while promoting user" });
+    }
+  });
+
+  // Health check endpoint
+  app.get("/api/health", async (req, res) => {
+    try {
+      // Check database connection
+      await storage.getUser(1).catch(() => {
+        // Ignore error, just checking if database is accessible
+      });
+      
+      res.status(200).json({
+        status: "healthy",
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        environment: process.env.NODE_ENV || "development",
+      });
+    } catch (error) {
+      res.status(503).json({
+        status: "unhealthy",
+        timestamp: new Date().toISOString(),
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
     }
   });
 

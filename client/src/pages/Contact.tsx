@@ -9,7 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Mail, Phone, MapPin, Clock, Send, CheckCircle } from 'lucide-react';
+import { Mail, Phone, MapPin, Clock, Send, CheckCircle, ArrowLeft } from 'lucide-react';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters long' }),
@@ -61,6 +61,15 @@ const Contact = () => {
 
   return (
     <div className="container mx-auto px-4 py-12">
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => window.history.back()}
+        className="mb-4"
+      >
+        <ArrowLeft className="h-4 w-4 mr-2" />
+        Back
+      </Button>
       <h1 className="text-4xl font-bold text-center mb-8">Contact Us</h1>
       <p className="text-center text-gray-600 dark:text-gray-400 mb-12 max-w-2xl mx-auto">
         Have a question, suggestion, or want to report potentially misleading content? Get in touch with our team and we'll get back to you as soon as possible.

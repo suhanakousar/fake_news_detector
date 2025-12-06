@@ -1,0 +1,11 @@
+torch
+transformers
+pandas
+numpy
+scikit-learn
+tqdm
+python-dotenv
+requests
+beautifulsoup4
+newspaper3k
+nltk 

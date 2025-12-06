@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   FileText, Link, Image, FileSearch, Search, Filter, Calendar, 
   ChevronDown, ChevronUp, ExternalLink, Clock, ArrowDownAZ, 
-  ArrowUpAZ, AlertCircle 
+  ArrowUpAZ, AlertCircle, ArrowLeft
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Analysis } from '@shared/schema';
-import { Link as WouterLink } from 'wouter';
+import { Link as WouterLink, useLocation } from 'wouter';
 import ResultsDisplay from '@/components/ResultsDisplay';
 
 const History: React.FC = () => {
@@ -110,6 +110,15 @@ const History: React.FC = () => {
       
       <main className="flex-grow container mx-auto px-4 py-8">
         <div className="mb-8">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => window.history.back()}
+            className="mb-4"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </Button>
           <h1 className="text-3xl font-bold mb-2">Your Analysis History</h1>
           <p className="text-gray-600 dark:text-gray-300">
             Review all your previous fact checks and analyses
@@ -302,7 +311,7 @@ const History: React.FC = () => {
                                   </div>
                                 </div>
                                 <p className="text-sm text-gray-600 dark:text-gray-300 mt-2 line-clamp-1">
-                                  {result.reasoning[0]}
+                                  {result.reasoning?.[0] || result.explanation || 'No reasoning available'}
                                 </p>
                               </div>
                             </div>

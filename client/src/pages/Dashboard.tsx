@@ -19,7 +19,8 @@ import {
   Activity,
   Clock,
   Search,
-  ChevronRight
+  ChevronRight,
+  ArrowLeft
 } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
@@ -79,6 +80,15 @@ const Dashboard: React.FC = () => {
       <Header />
       
       <main className="flex-grow container mx-auto px-4 py-8">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => window.history.back()}
+          className="mb-4"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back
+        </Button>
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
           <p className="text-gray-600 dark:text-gray-300">

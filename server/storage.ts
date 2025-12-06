@@ -3,6 +3,9 @@ import {
   analysis, type Analysis, type InsertAnalysis,
   feedback, type Feedback, type InsertFeedback 
 } from "@shared/schema";
+import { drizzle } from "drizzle-orm/neon-http";
+import { neon } from "@neondatabase/serverless";
+import { eq, desc } from "drizzle-orm";
 
 export interface IStorage {
   // User operations
@@ -27,6 +30,117 @@ export interface IStorage {
   getAllFeedback(): Promise<Feedback[]>;
 }
 
+// Initialize database connection
+let db: ReturnType<typeof drizzle> | null = null;
+
+function getDb() {
+  if (!db) {
+    const databaseUrl = process.env.DATABASE_URL;
+    if (!databaseUrl) {
+      throw new Error("DATABASE_URL environment variable is not set");
+    }
+    const sql = neon(databaseUrl);
+    db = drizzle(sql);
+  }
+  return db;
+}
+
+// Database Storage Implementation
+export class DatabaseStorage implements IStorage {
+  // User operations
+  async getUser(id: number): Promise<User | undefined> {
+    const result = await getDb().select().from(users).where(eq(users.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const result = await getDb().select().from(users).where(eq(users.username, username)).limit(1);
+    return result[0];
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const result = await getDb().select().from(users).where(eq(users.email, email)).limit(1);
+    return result[0];
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const result = await getDb().insert(users).values(insertUser).returning();
+    return result[0];
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return await getDb().select().from(users);
+  }
+  
+  async updateUser(id: number, userData: Partial<User>): Promise<User | undefined> {
+    const result = await getDb()
+      .update(users)
+      .set(userData)
+      .where(eq(users.id, id))
+      .returning();
+    return result[0];
+  }
+
+  // Analysis operations
+  async saveAnalysis(insertAnalysis: InsertAnalysis): Promise<Analysis> {
+    const result = await getDb().insert(analysis).values(insertAnalysis).returning();
+    return result[0];
+  }
+
+  async getUserAnalyses(userId: number): Promise<Analysis[]> {
+    return await getDb()
+      .select()
+      .from(analysis)
+      .where(eq(analysis.userId, userId))
+      .orderBy(desc(analysis.createdAt));
+  }
+
+  async getAnalysis(id: number): Promise<Analysis | undefined> {
+    const result = await getDb().select().from(analysis).where(eq(analysis.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getAllAnalyses(): Promise<Analysis[]> {
+    return await getDb().select().from(analysis).orderBy(desc(analysis.createdAt));
+  }
+
+  async getFlaggedAnalyses(): Promise<Analysis[]> {
+    return await getDb()
+      .select()
+      .from(analysis)
+      .where(eq(analysis.isFlagged, true))
+      .orderBy(desc(analysis.createdAt));
+  }
+
+  async flagAnalysis(id: number, isFlagged: boolean): Promise<Analysis | undefined> {
+    const result = await getDb()
+      .update(analysis)
+      .set({ isFlagged })
+      .where(eq(analysis.id, id))
+      .returning();
+    return result[0];
+  }
+
+  // Feedback operations
+  async saveFeedback(insertFeedback: InsertFeedback): Promise<Feedback> {
+    const result = await getDb().insert(feedback).values(insertFeedback).returning();
+    return result[0];
+  }
+
+  async getAnalysisFeedback(analysisId: number): Promise<Feedback[]> {
+    return await getDb()
+      .select()
+      .from(feedback)
+      .where(eq(feedback.analysisId, analysisId))
+      .orderBy(desc(feedback.createdAt));
+  }
+
+  async getAllFeedback(): Promise<Feedback[]> {
+    return await getDb().select().from(feedback).orderBy(desc(feedback.createdAt));
+  }
+}
+
+// In-memory storage for fallback/development
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private analyses: Map<number, Analysis>;
@@ -190,4 +304,7 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+// Use database storage if DATABASE_URL is set, otherwise fall back to memory storage
+export const storage: IStorage = process.env.DATABASE_URL 
+  ? new DatabaseStorage()
+  : new MemStorage();

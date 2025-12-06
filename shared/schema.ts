@@ -66,44 +66,15 @@ export type InsertFeedback = z.infer<typeof insertFeedbackSchema>;
 export type AnalysisResult = {
   classification: "real" | "fake" | "misleading";
   confidence: number;
-  reasoning: string[];
-  sourceCredibility: {
-    name: string;
-    score: number;
-    level: "low" | "medium" | "high";
-  };
-  factChecks: {
-    source: string;
+  explanation: string;
+  sources: {
     title: string;
-    snippet: string;
     url: string;
+    trustScore: number;
   }[];
-  sentiment: {
-    emotionalTone: string;
-    emotionalToneScore: number;
-    languageStyle: string;
-    languageStyleScore: number;
-    politicalLeaning: string;
-    politicalLeaningScore: number;
-  };
-  // New fields for AI-powered news summarizer and explanation
-  summary?: string;
-  // XAI (Explainable AI) details
-  xai?: {
-    keyPhrases: {
-      text: string;
-      impact: number; // -1 to 1 scale, negative indicates fake news contribution
-      explanation: string;
-    }[];
-    alternativeSources: {
-      title: string;
-      url: string;
-      trustScore: number;
-    }[];
-    detectionConfidence: {
-      algorithm: string;
-      score: number;
-      explanation: string;
-    }[];
+  patterns: {
+    sensationalist: number;
+    unreliableSource: number;
+    unverifiedClaims: number;
   };
 };

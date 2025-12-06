@@ -1,177 +1,150 @@
 import axios from 'axios';
 import { FactCheck } from './factCheck';
 
-// Hugging Face API configuration
-const HUGGINGFACE_API_KEY = process.env.HUGGINGFACE_API_KEY;
-const TEXT_GENERATION_API = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2";
-
-// Headers for Hugging Face API requests
-const headers = {
-  "Authorization": `Bearer ${HUGGINGFACE_API_KEY}`,
-  "Content-Type": "application/json"
-};
+// Gemini API configuration
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.HUGGINGFACE_API_KEY; // Support both for backward compatibility
+const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
 
 /**
- * Helper function to query Hugging Face API
+ * Helper function to query Gemini API
  */
-async function queryHuggingFaceAPI(payload: any) {
+async function queryGeminiAPI(prompt: string) {
   try {
-    const response = await axios.post(TEXT_GENERATION_API, payload, { headers });
+    if (!GEMINI_API_KEY) {
+      console.warn('Gemini API key not found. Using fallback analysis.');
+      return {
+        candidates: [{
+          content: {
+            parts: [{
+              text: JSON.stringify({
+                enhancedReasoning: "API key not available. Using basic analysis.",
+                enhancedFactChecks: []
+              })
+            }]
+          }
+        }]
+      };
+    }
+    
+    const response = await axios.post(
+      `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`,
+      {
+        contents: [{
+          parts: [{
+            text: prompt
+          }]
+        }]
+      },
+      {
+        headers: {
+          "Content-Type": "application/json"
+        }
+      }
+    );
     return response.data;
   } catch (error) {
-    if (axios.isAxiosError(error) && error.response?.status === 503) {
-      // Model is loading, retry after a delay
-      console.log(`Analysis model is loading, waiting to retry...`);
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      return queryHuggingFaceAPI(payload);
-    }
-    throw error;
+    console.error('Error querying Gemini API:', error);
+    return {
+      candidates: [{
+        content: {
+          parts: [{
+            text: JSON.stringify({
+              enhancedReasoning: "Error accessing AI service. Using basic analysis.",
+              enhancedFactChecks: []
+            })
+          }]
+        }
+      }]
+    };
   }
 }
 
 /**
- * Enhanced text analysis using Hugging Face Inference API
+ * Enhanced text analysis using Gemini API
  * @param text Text to analyze
  * @param language The language code (e.g., 'en', 'es', 'fr') of the text
- * @returns Enhanced analysis results or null if API key is missing or request fails
+ * @returns Enhanced analysis results
  */
-export async function analyzeWithPerplexity(text: string, language: string = 'en'): Promise<{ 
-  enhancedReasoning: string[] | null,
-  enhancedFactChecks: FactCheck[] | null
+export async function analyzeWithPerplexity(text: string, language: string = 'en'): Promise<{
+  confidence: number;
+  explanation: string;
+  sources: {
+    title: string;
+    url: string;
+    trustScore: number;
+  }[];
 }> {
-  // If no API key is provided, return null
-  if (!HUGGINGFACE_API_KEY) {
-    console.warn('Hugging Face API key is missing. Skipping enhanced analysis.');
-    return { enhancedReasoning: null, enhancedFactChecks: null };
-  }
-  
   try {
-    // Truncate text to a reasonable length
-    const truncatedText = text.length > 4000 ? text.substring(0, 4000) + '...(truncated)' : text;
-    
-    const prompt = `<s>[INST] You are an expert fact-checker and misinformation analyst. 
-    
-Analyze the following text for potential misinformation, fake news, or misleading content. The text is in ${language} language.
-
-"""
-${truncatedText}
-"""
-
-Please provide (in ${language} language):
-1. A detailed fact-check with clear reasoning (numbered points)
-2. At least three reliable sources that either support or refute claims in the text (with URLs)
-3. What linguistic patterns in the text could indicate misinformation
-
-Be objective, thorough, and focus only on facts. [/INST]</s>`;
-
-    const response = await queryHuggingFaceAPI({
-      inputs: prompt,
-      parameters: {
-        max_new_tokens: 1000,
-        temperature: 0.2,
-        top_p: 0.9,
-        do_sample: true,
-        return_full_text: false
-      }
-    });
-    
-    let analysisContent = '';
-    if (response && response[0] && response[0].generated_text) {
-      analysisContent = response[0].generated_text;
-    } else {
-      return { enhancedReasoning: null, enhancedFactChecks: null };
+    if (!GEMINI_API_KEY) {
+      console.warn('Gemini API key not found. Using fallback analysis.');
+      return {
+        confidence: 0.5,
+        explanation: "Perplexity AI analysis unavailable (Gemini API key not configured). Using pattern-based analysis only.",
+        sources: []
+      };
     }
-    
-    // Extract reasoning points from the response (lines that start with a number or bullet)
-    const reasoningLines = analysisContent
-      .split('\n')
-      .filter(line => {
-        const trimmedLine = line.trim();
-        // Match lines that start with a number, bullet point, or asterisk
-        return /^(\d+[\.\):]|\*|\-)\s+.+/.test(trimmedLine) && 
-               trimmedLine.length > 10; // Ensure it's not just a number or bullet
-      })
-      .map(line => line.trim())
-      .slice(0, 5); // Take up to 5 key points
-    
-    // Extract source URLs using regex
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const extractedUrls = analysisContent.match(urlRegex) || [];
-    
-    // For each URL, try to extract a title from the surrounding text
-    const enhancedFactChecks: FactCheck[] = [];
-    
-    for (let i = 0; i < Math.min(extractedUrls.length, 3); i++) {
-      const url = extractedUrls[i];
-      
-      // Find a title by looking for text around the URL
-      const urlIndex = analysisContent.indexOf(url);
-      const beforeUrl = analysisContent.substring(Math.max(0, urlIndex - 100), urlIndex).trim();
-      const afterUrl = analysisContent.substring(urlIndex + url.length, Math.min(analysisContent.length, urlIndex + url.length + 100)).trim();
-      
-      // Try to extract a title from text around the URL
-      let title = 'Referenced Source';
-      
-      // Check if there's a line with a title-like format before the URL
-      const beforeLines = beforeUrl.split('\n').reverse();
-      for (const line of beforeLines) {
-        if (line.length > 10 && line.length < 100 && !line.includes('http')) {
-          title = line.trim().replace(/^[\d\.\-\*)\s]+/, ''); // Remove any bullets or numbers
-          break;
-        }
-      }
-      
-      // If no title found, try the first line after the URL
-      if (title === 'Referenced Source') {
-        const afterLines = afterUrl.split('\n');
-        for (const line of afterLines) {
-          if (line.length > 10 && line.length < 100 && !line.includes('http')) {
-            title = line.trim().replace(/^[\d\.\-\*)\s]+/, '');
-            break;
-          }
-        }
-      }
-      
-      // Extract the hostname as the source
-      let source = 'Referenced Source';
-      try {
-        source = new URL(url).hostname.replace('www.', '');
-      } catch (e) {
-        // If URL parsing fails, use default
-      }
-      
-      enhancedFactChecks.push({
-        source,
-        title,
-        snippet: 'External reference from analysis',
-        url
-      });
+
+    const prompt = `Analyze the following text for potential misinformation. Provide a JSON response with:
+1. A confidence score between 0 and 1
+2. A detailed explanation of your analysis
+3. A list of relevant sources with titles, URLs, and trust scores
+
+Text to analyze: ${text}
+
+Response format:
+{
+  "confidence": number,
+  "explanation": string,
+  "sources": [
+    {
+      "title": string,
+      "url": string,
+      "trustScore": number
     }
+  ]
+}`;
+
+    const response = await queryGeminiAPI(prompt);
     
-    // If we couldn't extract real URLs, create dummy fact checks from the content
-    if (enhancedFactChecks.length === 0) {
-      // Split content into "source-like" sections
-      const sections = analysisContent.split(/Source \d+:|Reference \d+:|Reliable Source \d+:/).filter(s => s.trim().length > 20);
-      
-      for (let i = 0; i < Math.min(sections.length, 3); i++) {
-        const section = sections[i].trim();
-        const firstLine = section.split('\n')[0].trim();
-        
-        enhancedFactChecks.push({
-          source: `Analysis Source ${i + 1}`,
-          title: firstLine.length > 10 ? firstLine : `Analysis Point ${i + 1}`,
-          snippet: section.substring(0, 150) + '...',
-          url: 'https://huggingface.co/models' // Use HF models page as fallback
-        });
+    try {
+      // Extract text from Gemini response
+      const generatedText = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      if (!generatedText) {
+        throw new Error('No text found in Gemini response');
       }
+      
+      // Extract JSON from the response
+      const jsonMatch = generatedText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error('No JSON found in response');
+      }
+      
+      const result = JSON.parse(jsonMatch[0]);
+      
+      // Validate and normalize the response
+      return {
+        confidence: typeof result.confidence === 'number' ? Math.max(0, Math.min(1, result.confidence)) : 0.5,
+        explanation: typeof result.explanation === 'string' ? result.explanation : "No detailed explanation available.",
+        sources: Array.isArray(result.sources) ? result.sources.map((source: any) => ({
+          title: typeof source.title === 'string' ? source.title : 'Unknown Source',
+          url: typeof source.url === 'string' ? source.url : '',
+          trustScore: typeof source.trustScore === 'number' ? Math.max(0, Math.min(1, source.trustScore)) : 0.5
+        })) : []
+      };
+    } catch (error) {
+      console.error('Error parsing Gemini response:', error);
+      return {
+        confidence: 0.5,
+        explanation: "Error parsing AI response. Using basic analysis.",
+        sources: []
+      };
     }
-    
-    return {
-      enhancedReasoning: reasoningLines.length > 0 ? reasoningLines : null,
-      enhancedFactChecks: enhancedFactChecks.length > 0 ? enhancedFactChecks : null
-    };
   } catch (error) {
-    console.error('Error with Hugging Face analysis:', error);
-    return { enhancedReasoning: null, enhancedFactChecks: null };
+    console.error('Error in Perplexity analysis:', error);
+    return {
+      confidence: 0.5,
+      explanation: "Error in AI analysis. Using basic analysis.",
+      sources: []
+    };
   }
 }

@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/table";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Flag, AlertTriangle, CheckCircle, XCircle, Eye, Plus, FileText, Download, Upload, Trash2 } from "lucide-react";
+import { Loader2, Flag, AlertTriangle, CheckCircle, XCircle, Eye, Plus, FileText, Download, Upload, Trash2, ArrowLeft } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 import { getClassificationColor, getCredibilityLevelColor } from '@/lib/analysis';
 import { queryClient } from '@/lib/queryClient';
@@ -70,6 +70,15 @@ export default function AdminDashboard() {
 
   return (
     <div className="container max-w-7xl mx-auto py-10 px-4">
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => window.history.back()}
+        className="mb-4"
+      >
+        <ArrowLeft className="h-4 w-4 mr-2" />
+        Back
+      </Button>
       <div className="flex flex-col space-y-8">
         <div className="flex flex-col space-y-2">
           <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
