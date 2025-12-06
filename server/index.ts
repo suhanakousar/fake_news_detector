@@ -105,16 +105,23 @@ app.options('/api/analyze/text', (req, res) => {
     const hasBuiltFiles = fs.existsSync(distPath) && fs.existsSync(path.join(distPath, "index.html"));
     const explicitProduction = process.env.NODE_ENV === "production";
     const isRender = !!process.env.RENDER; // Render sets this automatically
+    const explicitDevelopment = process.env.NODE_ENV === "development";
     
     // Use production mode if:
     // 1. NODE_ENV is explicitly "production", OR
-    // 2. Built files exist (we're running a built version), OR
-    // 3. We're on Render (and not explicitly in development)
+    // 2. We're on Render AND have built files (FORCE production - ignore NODE_ENV), OR
+    // 3. Built files exist AND not explicitly in development mode
+    // CRITICAL: On Render with built files, ALWAYS use production mode regardless of NODE_ENV
     const isProduction = explicitProduction || 
-                        (hasBuiltFiles && process.env.NODE_ENV !== "development") ||
-                        (isRender && process.env.NODE_ENV !== "development");
+                        (isRender && hasBuiltFiles) || // Force production on Render if built files exist
+                        (hasBuiltFiles && !explicitDevelopment);
     
-    log(`🔍 Production detection: NODE_ENV=${process.env.NODE_ENV}, hasBuiltFiles=${hasBuiltFiles}, isRender=${isRender}, isProduction=${isProduction}`);
+    // If we're forcing production mode, also set NODE_ENV for consistency
+    if (isProduction && !explicitProduction) {
+      process.env.NODE_ENV = "production";
+    }
+    
+    log(`🔍 Production detection: NODE_ENV=${process.env.NODE_ENV}, hasBuiltFiles=${hasBuiltFiles}, isRender=${isRender}, explicitDev=${explicitDevelopment}, isProduction=${isProduction}`);
     
     // Setup Vite for development, serve static files in production
     if (!isProduction) {
