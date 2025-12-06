@@ -12,17 +12,12 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  // Force relative URLs - server and client are on the same port
-  // Ignore VITE_API_URL if it's set to the wrong port
+  // Use relative URLs - server and client are on the same origin in production
+  // In development, VITE_API_URL can be set if needed, but defaults to same origin
   const envApiUrl = import.meta.env.VITE_API_URL;
-  const BASE_URL = (envApiUrl && !envApiUrl.includes('3000')) ? envApiUrl : '';
+  const BASE_URL = envApiUrl || '';
   const normalizedUrl = url.startsWith('/') ? url : `/${url}`;
   const fullUrl = BASE_URL ? `${BASE_URL}${normalizedUrl}` : normalizedUrl;
-  
-  // Debug log to help identify issues
-  if (fullUrl.includes('3000')) {
-    console.warn('⚠️ API request going to port 3000! This should not happen. Full URL:', fullUrl);
-  }
   
   try {
     const res = await fetch(fullUrl, {

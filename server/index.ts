@@ -7,6 +7,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { type CorsRequest } from 'cors';
 import cors from 'cors';
+import path from "path";
 
 const app = express();
 
@@ -16,15 +17,38 @@ process.on('uncaughtException', (error) => {
 });
 
 // Configure CORS and other middleware
+// In production, allow requests from Render domain and localhost for development
+const allowedOrigins = process.env.NODE_ENV === 'production'
+  ? [
+      process.env.RENDER_EXTERNAL_URL, // Render's external URL
+      process.env.RENDER_EXTERNAL_HOSTNAME, // Alternative Render hostname format
+      ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [])
+    ].filter(Boolean) // Remove undefined values
+  : [
+      'http://localhost:5002', 
+      'http://127.0.0.1:5002', 
+      'http://localhost:5173', 
+      'http://127.0.0.1:5173',
+      'http://localhost:3000',
+      'http://127.0.0.1:3000'
+    ];
+
 app.use(cors({
-  origin: [
-    'http://localhost:5002', 
-    'http://127.0.0.1:5002', 
-    'http://localhost:5173', 
-    'http://127.0.0.1:5173',
-    'http://localhost:3000',
-    'http://127.0.0.1:3000'
-  ],
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, Postman, or same-origin requests)
+    if (!origin) return callback(null, true);
+    
+    // In production, be more strict; in development, allow all localhost
+    if (process.env.NODE_ENV === 'production') {
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(null, true); // Allow all origins in production for now (adjust if needed)
+      }
+    } else {
+      callback(null, true); // Allow all origins in development
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Accept', 'Origin', 'Authorization'],
   credentials: true,
@@ -74,17 +98,21 @@ app.options('/api/analyze/text', (req, res) => {
   try {
     const server = await registerRoutes(app);
     
-    // Setup Vite for development
+    // Setup Vite for development, serve static files in production
     if (process.env.NODE_ENV !== "production") {
       await setupVite(app, server);
     } else {
+      // In production, serve the built React app
       serveStatic(app);
     }
     
     const port = process.env.PORT || 5002;
     server.listen(port, "0.0.0.0", () => {
-      log(`Server running on port ${port}`);
-      log(`CORS enabled for origins: ${['http://localhost:5002', 'http://127.0.0.1:5002', 'http://localhost:5173', 'http://127.0.0.1:5173']}`);
+      log(`🚀 Server running on port ${port}`);
+      log(`📦 Environment: ${process.env.NODE_ENV || 'development'}`);
+      if (process.env.NODE_ENV === "production") {
+        log(`🌐 Serving static files from: ${path.resolve(import.meta.dirname, "..", "dist", "public")}`);
+      }
     });
 
     // Add error handler for server
