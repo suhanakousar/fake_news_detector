@@ -12,10 +12,17 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  // Use relative URLs - server and client are on the same origin in production
-  // In development, VITE_API_URL can be set if needed, but defaults to same origin
+  // Use relative URLs - server and client are on the same origin
+  // Ignore VITE_API_URL if it points to localhost:3000 (wrong port) or in production
   const envApiUrl = import.meta.env.VITE_API_URL;
-  const BASE_URL = envApiUrl || '';
+  const isProduction = import.meta.env.PROD || window.location.hostname !== 'localhost';
+  const isWrongPort = envApiUrl?.includes('localhost:3000');
+  
+  // Only use BASE_URL if:
+  // 1. Not in production AND
+  // 2. Not pointing to wrong port (3000) AND
+  // 3. Actually set
+  const BASE_URL = (!isProduction && !isWrongPort && envApiUrl) ? envApiUrl : '';
   const normalizedUrl = url.startsWith('/') ? url : `/${url}`;
   const fullUrl = BASE_URL ? `${BASE_URL}${normalizedUrl}` : normalizedUrl;
   
