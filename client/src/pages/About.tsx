@@ -12,7 +12,8 @@ import {
   Network, 
   Layers,
   CheckCircle2,
-  ShieldCheck
+  ShieldCheck,
+  ArrowLeft
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
