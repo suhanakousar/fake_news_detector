@@ -6,6 +6,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import ChatbotFloating from "./components/ChatbotFloating";
+import PWAInstallButton from "./components/PWAInstallButton";
 import NotFound from "./pages/not-found";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
@@ -38,6 +39,7 @@ function App() {
           <LanguageProvider>
             <Router />
             <ChatbotFloating />
+            <PWAInstallButton />
             <Toaster />
           </LanguageProvider>
         </AuthProvider>

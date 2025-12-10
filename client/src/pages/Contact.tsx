@@ -9,7 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Mail, Phone, MapPin, Clock, Send, CheckCircle, ArrowLeft } from 'lucide-react';
+import { Mail, Send, CheckCircle, ArrowLeft } from 'lucide-react';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters long' }),
@@ -225,41 +225,13 @@ const Contact = () => {
                 <Mail className="h-5 w-5 mr-3 text-primary mt-1" />
                 <div>
                   <h3 className="font-medium">Email</h3>
-                  <p className="text-gray-600 dark:text-gray-400">contact@truthlens.com</p>
+                  <p className="text-gray-600 dark:text-gray-400">suhanakousar2005@gmail.com</p>
                   <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
                     We'll respond within 24-48 hours
                   </p>
                 </div>
               </div>
               
-              <div className="flex items-start">
-                <Phone className="h-5 w-5 mr-3 text-primary mt-1" />
-                <div>
-                  <h3 className="font-medium">Phone</h3>
-                  <p className="text-gray-600 dark:text-gray-400">+1 (555) 123-4567</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
-                    Monday to Friday, 9am to 5pm EST
-                  </p>
-                </div>
-              </div>
-              
-              <div className="flex items-start">
-                <MapPin className="h-5 w-5 mr-3 text-primary mt-1" />
-                <div>
-                  <h3 className="font-medium">Location</h3>
-                  <p className="text-gray-600 dark:text-gray-400">123 Truth Street, Suite 456</p>
-                  <p className="text-gray-600 dark:text-gray-400">New York, NY 10001</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start">
-                <Clock className="h-5 w-5 mr-3 text-primary mt-1" />
-                <div>
-                  <h3 className="font-medium">Office Hours</h3>
-                  <p className="text-gray-600 dark:text-gray-400">Monday - Friday: 9am - 5pm EST</p>
-                  <p className="text-gray-600 dark:text-gray-400">Saturday & Sunday: Closed</p>
-                </div>
-              </div>
             </CardContent>
           </Card>
 

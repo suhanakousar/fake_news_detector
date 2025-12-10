@@ -40,14 +40,12 @@ const Header: React.FC = () => {
         {/* Logo */}
         <Link href="/">
           <div className="flex items-center space-x-2 cursor-pointer">
-            <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-primary text-white font-bold text-xl">
-              <span className="flex items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <line x1="12" y1="8" x2="12" y2="12"></line>
-                  <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                </svg>
-              </span>
+            <div className="flex items-center justify-center h-10 w-10 rounded-xl overflow-hidden">
+              <img 
+                src="/icon.png" 
+                alt="TruthLens Logo" 
+                className="h-full w-full object-contain"
+              />
             </div>
             <span className="text-xl font-bold text-primary font-serif">TruthLens</span>
           </div>
@@ -113,8 +111,12 @@ const Header: React.FC = () => {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex items-center space-x-2">
-                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                    <User className="h-4 w-4" />
+                  <div className="h-8 w-8 rounded-full overflow-hidden flex items-center justify-center bg-primary/10">
+                    <img 
+                      src="/icon.png" 
+                      alt="Profile" 
+                      className="h-full w-full object-cover"
+                    />
                   </div>
                   <span className="text-sm font-medium hidden md:block">{user?.username}</span>
                 </Button>

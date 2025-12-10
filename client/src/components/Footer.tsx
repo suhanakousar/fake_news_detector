@@ -164,7 +164,7 @@ const Footer: React.FC = () => {
                 <Button
                   variant="link"
                   className="text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary text-sm p-0 h-auto"
-                  onClick={() => window.location.href = 'mailto:contact@truthlens.com'}
+                  onClick={() => window.location.href = 'mailto:suhanakousar2005@gmail.com'}
                 >
                   Contact Us
                 </Button>
@@ -175,17 +175,20 @@ const Footer: React.FC = () => {
         <div className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-700 flex flex-col md:flex-row justify-between items-center">
           <div className="mb-4 md:mb-0">
             <div className="flex items-center space-x-2">
-              <div className="h-8 w-8 rounded-lg bg-primary text-white flex items-center justify-center font-bold text-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <line x1="12" y1="8" x2="12" y2="12"></line>
-                  <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                </svg>
+              <div className="h-8 w-8 rounded-lg overflow-hidden">
+                <img 
+                  src="/icon.png" 
+                  alt="TruthLens Logo" 
+                  className="h-full w-full object-contain"
+                />
               </div>
               <span className="text-lg font-bold text-primary font-serif">TruthLens</span>
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
               © {new Date().getFullYear()} TruthLens. All rights reserved.
+            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Created by suhanakousar
             </p>
           </div>
           <div className="flex space-x-4">

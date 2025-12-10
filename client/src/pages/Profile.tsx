@@ -190,9 +190,13 @@ const Profile = () => {
             <CardContent className="pt-6">
               <div className="flex flex-col items-center">
                 <Avatar className="h-24 w-24">
-                  <AvatarImage src="" /> {/* We don't have photoURL in our user type */}
+                  <AvatarImage src={user?.photoURL || "/icon.png"} />
                   <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
-                    {user?.username?.substring(0, 2).toUpperCase() || 'U'}
+                    <img 
+                      src="/icon.png" 
+                      alt="Profile" 
+                      className="h-full w-full object-cover"
+                    />
                   </AvatarFallback>
                 </Avatar>
                 <h2 className="mt-4 text-xl font-bold">{user?.username}</h2>
