@@ -1,115 +1,189 @@
 # 🕵️‍♀️ TruthLens Campus
 
-**TruthLens Campus – AI-powered Misinformation Detection for Students & Local Communities**
+**AI-Assisted Misinformation Detection & Learning Platform for Students and Local Communities**
 
 ## 🌟 Inspiration
 
-In today's digital-first campus environment, students heavily rely on WhatsApp groups, Telegram channels, Instagram posts, emails, and online portals for critical information such as placements, scholarships, exams, events, and local news.
+In today's digital-first campus environment, students rely heavily on WhatsApp groups, Telegram channels, emails, Instagram posts, and online portals for critical information such as:
+
+- Placements & internships
+- Scholarships & exams
+- Events & official notices
+- Local and campus-specific news
 
 Unfortunately, misinformation spreads faster than verification.
 
-False placement messages, fake notices, manipulated images, and misleading local news often cause:
+Fake placement messages, manipulated posters, false circulars, and misleading links often cause:
+
 - Panic and confusion
 - Financial scams
-- Missed opportunities
-- Loss of trust within communities
+- Missed academic or career opportunities
+- Loss of trust within student communities
 
-We built TruthLens Campus to give students and communities a fast, reliable, AI-powered way to verify information before believing or sharing it.
+We built TruthLens Campus to help students verify information and learn how misinformation works, before believing or sharing it.
 
 ## 🎯 Problem Statement
 
-There is no dedicated, easy-to-use verification platform focused on campus and local-community misinformation.
+There is no dedicated, easy-to-use platform focused on campus and local-community misinformation.
 
-Existing fact-checking tools are:
-- Generic
-- Slow
-- Not student-focused
-- Lack clear explanations
+Most existing fact-checking tools are:
 
-Students need a simple yet intelligent system that:
-- Works in real time
-- Explains why content is fake or real
+- Generic and not student-focused
+- Designed for journalists, not learners
+- Slow or difficult to interpret
+- Lacking transparent explanations
+
+Students need a system that:
+
+- Works quickly
+- Explains why content may be misleading
 - Supports multiple content formats
+- Encourages responsible digital behavior
 
 ## 💡 Our Solution
 
-TruthLens Campus is a web-based AI verification platform powered by Google's Gemini API, designed specifically for students and local communities.
+TruthLens Campus is a web-based, AI-assisted verification and learning platform designed specifically for students and local communities.
 
 Users can submit:
-- 📝 Text messages
-- 🔗 URLs
-- 🖼️ Images
-- 📄 Documents (PDF notices, circulars, announcements)
 
-The system analyzes the content using Gemini's advanced reasoning capabilities and returns:
-- ✅ Verdict: Real / Fake / Partially True
+- 📝 Text messages
+- 🔗 URLs or articles
+- 🖼️ Images (posters, screenshots)
+- 📄 Documents (PDF notices, circulars)
+
+The system analyzes the content using AI reasoning and provides:
+
+- ✅ Verdict: Likely Real / Likely Fake / Partially True
 - 📊 Confidence Score
-- 🧠 AI-generated explanation
+- 🧠 Human-readable explanation
 - 🔍 Contextual insights
 
-This empowers users to understand misinformation, not just detect it.
+Instead of acting as a black-box detector, TruthLens focuses on explainability and learning.
+
+## 🎓 Learning-Focused Design (E-Techh Hacks Alignment)
+
+TruthLens Campus is not just a detection tool — it is a learning platform.
+
+- Helps students understand why information is misleading
+- Improves critical thinking and media literacy
+- Encourages responsible information sharing
+- Demonstrates real-world application of AI for social good
+
+This directly aligns with E-Techh Hacks' theme: **"Anything for Learning."**
 
 ## ✨ Key Features
 
 ### 🔍 Multi-Modal Verification
-- Text and message verification
-- URL and article analysis
-- Image authenticity detection
-- PDF & document credibility checking
+- Text & message analysis
+- URL and article credibility checks
+- Image authenticity assessment
+- PDF & document evaluation
 
-### 🤖 Gemini-Powered Intelligence
-- Advanced contextual reasoning
+### 🤖 AI-Assisted Reasoning
+- Context-aware content understanding
 - Natural language explanations
 - Confidence-based classification
 
 ### 🧠 Explainable AI
-- Clear reasons behind each verdict
-- Human-readable explanations
-- Helps users learn and think critically
+- Clear reasoning behind each verdict
+- Transparent decision process
+- Focus on awareness, not fear
 
 ### 🔐 Secure & Scalable
-- Firebase Authentication
+- Secure authentication
 - Cloud-based architecture
-- Secure user sessions
+- Designed for future extension
 
 ### 🌐 Community-Centric Design
 - Optimized for campus use cases
 - Simple UI for non-technical users
-- Designed for real-world adoption
+- Practical real-world adoption
 
-## 🧪 How It Works (Technical Flow)
+## 🆚 What Makes TruthLens Campus Different?
 
-1. User submits content via the web interface
-2. Content is preprocessed and validated
-3. Data is securely sent to Gemini API
-4. Gemini performs credibility analysis and reasoning
-5. Results are returned with verdict & explanation
-6. Results are stored using Firebase Firestore
+- Focused on campus & local misinformation, not global news
+- Explainable AI instead of black-box verdicts
+- Multi-format verification in one place
+- Designed for students and learners, not journalists
+- Learning-first approach over pure detection
 
-## 🧠 Google Technologies Used
+## 🧩 Architecture & Processing Pipeline (Visual Explanation)
 
-This project strictly follows TechSprint Hackathon requirements.
+The diagrams below visually explain how TruthLens Campus processes content and produces an explainable credibility result.
 
-- **Gemini API** – AI reasoning & misinformation detection
-- **Firebase Authentication** – Secure login
-- **Firebase Firestore** – Cloud database
-- **Firebase Hosting** – Web deployment
-- **Google Cloud Functions** – Backend processing (extendable)
+### 🔹 Diagram 1: System Architecture Overview
 
-## 🏗️ System Architecture
+![TruthLens System Architecture](./docs/images/system-architecture.png)
+
+**Purpose:** To show the complete system architecture from user input to final prediction.
+
+**Flow:**
+1. User submits content (text, URL, image, or PDF)
+2. Content extraction and preprocessing occur
+3. Key claims are identified
+4. Evidence is retrieved from trusted sources
+5. Natural Language Inference (NLI) evaluates each claim against evidence
+6. AI classifier processes the results
+7. Confidence calibration ensures reliable predictions
+8. Final verdict with explanation is presented
+
+### 🔹 Diagram 2: User Input & Content Processing
+
+![User Input & Content Processing](./docs/images/user-input-processing.png)
+
+**Purpose:** To show how different types of content are handled uniformly.
+
+**Flow:**
+1. User submits content (text, URL, image, or PDF)
+2. Content extraction and preprocessing occur
+3. Text is cleaned, normalized, and structured
+4. Prepared data moves to the verification stage
+
+This ensures consistency across all content formats.
+
+### 🔹 Diagram 3: Claim Identification & Evidence Verification
+
+![Claim Identification & Evidence Verification](./docs/images/claim-evidence-verification.png)
+
+**Purpose:** To explain how the system understands what is being claimed.
+
+**Flow:**
+1. Key claims are identified from the content
+2. Relevant supporting or contradicting information is retrieved
+3. Each evidence item is evaluated independently
+4. Natural Language Inference (NLI) logic determines whether evidence:
+   - Supports the claim
+   - Refutes the claim
+   - Is insufficient or unclear
+
+This modular design improves transparency and explainability.
+
+### 🔹 Diagram 4: Confidence Calibration & Final Prediction
+
+**Purpose:** To avoid overconfident or misleading AI outputs.
+
+**Final Output Includes:**
+- Verdict: Likely Real / Likely Fake / Partially True
+- Confidence score (calibrated)
+- Explanation summary
+- Supporting contextual references
+
+This helps users learn how conclusions are formed, not just see the result.
+
+## 🏗️ System Architecture (Text Overview)
 
 ```
 User Interface
     ↓
-Content Input Layer
+Content Input & Validation
     ↓
-AI Processing (Gemini API)
+AI Reasoning & Verification Layer
     ↓
-Credibility Analysis Engine
+Explanation Generation
     ↓
-Result Explanation Layer
+Result Display
     ↓
-Firebase Storage & Analytics
+Cloud Storage & Analytics
 ```
 
 ## 🧰 Tech Stack
@@ -119,28 +193,29 @@ Firebase Storage & Analytics
 - TypeScript
 - Tailwind CSS
 
-### Backend
+### Backend & Cloud
 - Node.js
-- Firebase
-- Google Cloud Functions
+- Firebase Authentication
+- Firebase Firestore
+- Firebase Hosting
 
-### AI / ML
-- Google Gemini (LLM-based reasoning)
+### AI / Intelligence
+- AI-based reasoning model (LLM-powered)
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js (v18 or higher)
+- Node.js (v18+)
 - npm or yarn
 - Firebase account
-- Google Gemini API key
+- AI API key
 
 ### Installation
 
 1. Clone the repository:
 ```bash
 git clone <repository-url>
-cd AuthenticCreative1
+cd truthlens-campus
 ```
 
 2. Install dependencies:
@@ -148,41 +223,46 @@ cd AuthenticCreative1
 npm install
 ```
 
-3. Set up environment variables:
-Create a `.env` file in the root directory:
+3. Create a `.env` file:
 ```env
-GEMINI_API_KEY=your_gemini_api_key_here
-VITE_FIREBASE_API_KEY=your_firebase_api_key
-VITE_FIREBASE_AUTH_DOMAIN=your_auth_domain
+AI_API_KEY=your_api_key_here
+VITE_FIREBASE_API_KEY=your_firebase_key
 VITE_FIREBASE_PROJECT_ID=your_project_id
-# ... other Firebase config
 ```
 
-4. Start the development server:
+4. Run locally:
 ```bash
 npm run dev
 ```
 
 ## 🎥 Demo & Deliverables
 
-- 🎬 2–3 minute demo video showcasing real use cases
-- 📊 Pitch deck explaining problem, solution & impact
-- 💻 Working prototype (this repository)
+- 🎬 2–3 minute demo video
+- 🖼️ Screenshots of verification results
+- 📊 Pitch explaining problem, solution & impact
+- 💻 Working prototype
 
 ## 🌍 Real-World Impact
 
-- Prevents misinformation panic on campuses
+- Reduces panic caused by false information
 - Protects students from scams
-- Improves trust in shared information
-- Encourages responsible digital behavior
+- Builds trust within communities
+- Encourages responsible digital habits
+- Improves AI literacy
 
 ## 🚀 Future Scope
 
 - 🌍 Multilingual verification
 - 🤝 WhatsApp / Telegram bot integration
 - 🧩 Browser extension
-- 📊 Community credibility scoring
+- 📊 Community credibility insights
 - 🖼️ Advanced image forensics
+
+## ⚠️ Ethical & Responsible AI Disclaimer
+
+TruthLens Campus provides AI-assisted credibility insights intended to support learning and informed decision-making.
+
+**It should not be treated as a definitive or authoritative source of truth.**
 
 ## 🧑‍🤝‍🧑 Team
 
